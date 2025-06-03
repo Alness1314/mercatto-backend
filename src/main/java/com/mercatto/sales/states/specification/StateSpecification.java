@@ -14,6 +14,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 public class StateSpecification implements Specification<StateEntity> {
+    @SuppressWarnings("null")
     @Override
     public Predicate toPredicate(Root<StateEntity> root, CriteriaQuery<?> query,
             CriteriaBuilder criteriaBuilder) {
