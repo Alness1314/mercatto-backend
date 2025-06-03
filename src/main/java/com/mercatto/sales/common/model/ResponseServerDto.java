@@ -22,4 +22,10 @@ public class ResponseServerDto {
     private HttpStatus code;
     private Boolean status;
     private Map<String, Object> data;
+
+    public ResponseServerDto(String message, HttpStatus code, Boolean status) {
+        this.message = message;
+        this.code = code;
+        this.status = status;
+    }
 }

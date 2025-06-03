@@ -1,8 +1,8 @@
-package com.mercatto.sales.profiles.entity;
-
-import java.io.Serializable;
+package com.mercatto.sales.country.entity;
 
 import com.mercatto.sales.common.model.entity.CommonEntity;
+
+import java.io.Serializable;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -14,21 +14,18 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 @Entity
-@Table(name = "profiles")
+@Table(name = "country")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProfileEntity extends CommonEntity implements Serializable {
+public class CountryEntity extends CommonEntity implements Serializable {
     private static final long serialVersionUID = 1L;
 
-    @Column(nullable = false, unique = true, columnDefinition = "character varying(64)")
+    @Column(nullable = false, columnDefinition = "character varying(64)")
     private String name;
 
-    @Override
-    public String toString() {
-        return "ProfileEntity [id=" + getId() + ", name=" + name + ", erased=" + getErased() + "]";
-    }
-
+    @Column(name = "code", nullable = true, columnDefinition = "character varying(5)")
+    private String code;
 }

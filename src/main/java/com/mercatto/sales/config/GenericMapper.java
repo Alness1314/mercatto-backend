@@ -11,14 +11,19 @@ import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.stereotype.Component;
 
 import com.mercatto.sales.utils.DateTimeUtils;
+import com.mercatto.sales.common.model.entity.CommonEntity;
+import com.mercatto.sales.users.dto.request.UserRequest;
+import com.mercatto.sales.users.dto.response.UserResponse;
+import com.mercatto.sales.users.entity.UserEntity;
+import com.mercatto.sales.common.model.dto.CommonResponse;
 
 import jakarta.annotation.PostConstruct;
 
 @Component
 public class GenericMapper {
-     private final ModelMapper mapper;
+    private final ModelMapper mapper;
 
-    public GenericMapper(){
+    public GenericMapper() {
         this.mapper = new ModelMapper();
     }
 
@@ -34,7 +39,7 @@ public class GenericMapper {
         mapper.getConfiguration()
                 .setSkipNullEnabled(true)
                 .setFieldMatchingEnabled(true)
-                .setMatchingStrategy(MatchingStrategies.STRICT);
+                .setMatchingStrategy(MatchingStrategies.STANDARD);
     }
 
     // Método para registrar convertidores personalizados
@@ -45,21 +50,44 @@ public class GenericMapper {
 
     // Método para registrar mapeos específicos
     private void registerMappings() {
-        Converter<String, LocalDate> localDateConverter = createConverter(DateTimeUtils::parseToLocalDate);
 
-        /*mapper.createTypeMap(PatientsRequest.class, PatientsEntity.class)
-                .addMappings(m -> m.using(localDateConverter)
-                        .map(PatientsRequest::getBirthayDate, PatientsEntity::setBirthayDate));*/
+        mapper.createTypeMap(CommonEntity.class, CommonResponse.class)
+                .addMappings(m -> {
+                    m.map(CommonEntity::getId, CommonResponse::setId);
+                    m.map(CommonEntity::getCreateAt, CommonResponse::setCreateAt);
+                    m.map(CommonEntity::getUpdateAt, CommonResponse::setUpdateAt);
+                    m.map(CommonEntity::getErased, CommonResponse::setErased);
+                });
+
+        // Inverso: de CommonResponse a CommonEntity
+        mapper.createTypeMap(CommonResponse.class, CommonEntity.class)
+                .addMappings(m -> {
+                    m.map(CommonResponse::getId, CommonEntity::setId);
+                    m.map(CommonResponse::getCreateAt, CommonEntity::setCreateAt);
+                    m.map(CommonResponse::getUpdateAt, CommonEntity::setUpdateAt);
+                    m.map(CommonResponse::getErased, CommonEntity::setErased);
+                });
+
+        mapper.createTypeMap(UserResponse.class, UserEntity.class)
+                .addMappings(m -> {
+                    m.map(UserResponse::getCompanyId, UserEntity::setCompanyId);
+                    m.skip(UserEntity::setId); // Evita que documentoId sobrescriba id
+                });
+
+        mapper.createTypeMap(UserRequest.class, UserEntity.class)
+                .addMappings(m -> {
+                    m.map(UserRequest::getCompanyId, UserEntity::setCompanyId);
+                    m.skip(UserEntity::setId); // Evita que documentoId sobrescriba id
+                });
     }
-
-    
 
     // Método para mapear un objeto
     public <T, R> R map(T source, Class<R> targetClass) {
         try {
             return mapper.map(source, targetClass);
         } catch (Exception e) {
-            throw new MappingException("Error al mapear " + source.getClass().getSimpleName() + " a " + targetClass.getSimpleName(), e);
+            throw new MappingException(
+                    "Error al mapear " + source.getClass().getSimpleName() + " a " + targetClass.getSimpleName(), e);
         }
     }
 
