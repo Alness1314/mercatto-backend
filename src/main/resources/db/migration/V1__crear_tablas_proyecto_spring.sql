@@ -52,3 +52,24 @@ CREATE TABLE cities (
     erased BOOLEAN NOT NULL,
     CONSTRAINT fk_cities_state FOREIGN KEY (state_id) REFERENCES states(id) ON DELETE CASCADE
 );
+
+CREATE TABLE modules (
+    id UUID PRIMARY KEY,
+    "name" VARCHAR(64) NOT NULL,
+    "route" VARCHAR(256) NOT NULL,
+    icon_name VARCHAR(128) NOT NULL,
+    parent_module_id UUID,
+    CONSTRAINT fk_modules_parent FOREIGN KEY (parent_module_id) REFERENCES modules(id)
+);
+
+CREATE TABLE permissions (
+    profile_id UUID NOT NULL,
+    module_id UUID NOT NULL,
+    can_create BOOLEAN NOT NULL,
+    can_read BOOLEAN NOT NULL,
+    can_update BOOLEAN NOT NULL,
+    can_delete BOOLEAN NOT NULL,
+    PRIMARY KEY (profile_id, module_id),
+    CONSTRAINT fk_permission_profile FOREIGN KEY (profile_id) REFERENCES profiles(id),
+    CONSTRAINT fk_permission_module FOREIGN KEY (module_id) REFERENCES modules(id)
+);

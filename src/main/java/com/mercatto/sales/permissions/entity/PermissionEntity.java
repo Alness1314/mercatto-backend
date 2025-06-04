@@ -1,8 +1,7 @@
 package com.mercatto.sales.permissions.entity;
 
-import org.springframework.context.annotation.Profile;
-
 import com.mercatto.sales.modules.entity.ModulesEntity;
+import com.mercatto.sales.profiles.entity.ProfileEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EmbeddedId;
@@ -23,18 +22,21 @@ public class PermissionEntity {
 
     @ManyToOne
     @JoinColumn(name = "profileId", insertable = false, updatable = false)
-    private Profile profile;
+    private ProfileEntity profile;
 
     @ManyToOne
     @JoinColumn(name = "moduleId", insertable = false, updatable = false)
     private ModulesEntity module;
 
-    @Column(nullable = false)
+    @Column(name = "can_create", nullable = false, columnDefinition = "boolean")
+    private boolean canCreate;
+
+    @Column(name = "can_read", nullable = false, columnDefinition = "boolean")
     private boolean canRead;
 
-    @Column(nullable = false)
-    private boolean canWrite;
+    @Column(name = "can_update", nullable = false, columnDefinition = "boolean")
+    private boolean canUpdate;
 
-    @Column(nullable = false)
+    @Column(name = "can_delete", nullable = false, columnDefinition = "boolean")
     private boolean canDelete;
 }

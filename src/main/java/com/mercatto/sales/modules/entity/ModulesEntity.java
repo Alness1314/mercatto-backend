@@ -21,20 +21,17 @@ import com.mercatto.sales.permissions.entity.PermissionEntity;
 @Getter
 @Setter
 public class ModulesEntity extends CommonEntity {
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "character varying(64)")
     private String name;
 
-    @Column(nullable = false)
+    @Column(nullable = false, columnDefinition = "character varying(256)")
     private String route;
 
-    @Column(name = "iconName", nullable = false)
+    @Column(name = "icon_name", nullable = false, columnDefinition = "character varying(128)")
     private String iconName;
 
-    @Column(nullable = false)
-    private boolean deleted;
-
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "parentModuleId")
+    @JoinColumn(name = "parent_module_id", columnDefinition = "uuid")
     private ModulesEntity parent;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
