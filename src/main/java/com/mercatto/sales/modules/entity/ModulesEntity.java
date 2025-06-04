@@ -11,6 +11,7 @@ import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.List;
 import java.util.Set;
 
 import com.mercatto.sales.common.model.entity.CommonEntity;
@@ -35,8 +36,8 @@ public class ModulesEntity extends CommonEntity {
     private ModulesEntity parent;
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL)
-    private Set<ModulesEntity> submodules;
+    private List<ModulesEntity> submodules;
 
     @OneToMany(mappedBy = "module", cascade = CascadeType.ALL)
-    private Set<PermissionEntity> permissions;
+    private List<PermissionEntity> permissions;
 }

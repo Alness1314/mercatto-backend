@@ -21,11 +21,11 @@ public class PermissionEntity {
     private PermissionId id;
 
     @ManyToOne
-    @JoinColumn(name = "profileId", insertable = false, updatable = false)
+    @JoinColumn(name = "profile_id", insertable = false, updatable = false)
     private ProfileEntity profile;
 
     @ManyToOne
-    @JoinColumn(name = "moduleId", insertable = false, updatable = false)
+    @JoinColumn(name = "module_id", insertable = false, updatable = false)
     private ModulesEntity module;
 
     @Column(name = "can_create", nullable = false, columnDefinition = "boolean")

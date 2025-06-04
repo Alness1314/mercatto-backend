@@ -8,8 +8,10 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
 import com.mercatto.sales.modules.dto.request.ModuleRequest;
+import com.mercatto.sales.modules.dto.response.ModuleResponse;
 import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.modules.repository.ModulesRepository;
 import com.mercatto.sales.modules.service.ModulesService;
@@ -17,12 +19,13 @@ import com.mercatto.sales.modules.specification.ModuleSpecification;
 
 import jakarta.persistence.EntityNotFoundException;
 
+@Service
 public class ModulesServiceImpl implements ModulesService {
     @Autowired
     private ModulesRepository modulesRepository;
 
     @Override
-    public List<ModulesEntity> getFilteredSubmodules(Map<String, String> filtros) {
+    public List<ModuleResponse> getFilteredSubmodules(Map<String, String> filtros) {
         String name = filtros.get("name");
         String profileIdStr = filtros.get("profileId");
 
@@ -47,9 +50,9 @@ public class ModulesServiceImpl implements ModulesService {
         hijos.forEach(hijo -> hijo.setPermissions(
                 hijo.getPermissions().stream()
                         .filter(p -> p.getProfile().getId().equals(profileId))
-                        .collect(Collectors.toSet())));
+                        .toList()));
 
-        return hijos;
+        return hijos.stream().map(this::mapModule).toList();
     }
 
     @Override
@@ -80,5 +83,21 @@ public class ModulesServiceImpl implements ModulesService {
                 .stream()
                 .filter(module -> module.getParent() == null) // Solo módulos de nivel superior
                 .toList();
+    }
+
+    private ModuleResponse mapModule(ModulesEntity source) {
+        ModuleResponse module = new ModuleResponse();
+        module.setId(source.getId());
+        module.setName(source.getName());
+        module.setRoute(source.getRoute());
+        module.setIconName(source.getIconName());
+        module.setRead(source.getPermissions().get(0).isCanRead());
+        module.setWrite(source.getPermissions().get(0).isCanUpdate());
+        module.setDelete(source.getPermissions().get(0).isCanDelete());
+        module.setCreateAt(source.getCreateAt());
+        module.setUpdateAt(source.getUpdateAt());
+        module.setErased(source.getErased());
+
+        return module;
     }
 }

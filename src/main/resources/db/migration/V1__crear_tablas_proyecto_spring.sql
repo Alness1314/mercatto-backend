@@ -59,6 +59,9 @@ CREATE TABLE modules (
     "route" VARCHAR(256) NOT NULL,
     icon_name VARCHAR(128) NOT NULL,
     parent_module_id UUID,
+    create_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    update_at TIMESTAMP WITHOUT TIME ZONE NOT NULL,
+    erased BOOLEAN NOT NULL,
     CONSTRAINT fk_modules_parent FOREIGN KEY (parent_module_id) REFERENCES modules(id)
 );
 
