@@ -1,21 +1,26 @@
 package com.mercatto.sales.modules.service.impl;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Collectors;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.modules.dto.request.ModuleRequest;
 import com.mercatto.sales.modules.dto.response.ModuleResponse;
 import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.modules.repository.ModulesRepository;
 import com.mercatto.sales.modules.service.ModulesService;
 import com.mercatto.sales.modules.specification.ModuleSpecification;
+import com.mercatto.sales.permissions.dto.response.PermissionResponse;
+import com.mercatto.sales.permissions.entity.PermissionEntity;
+import com.mercatto.sales.profiles.dto.response.ProfileDto;
 
 import jakarta.persistence.EntityNotFoundException;
 
@@ -25,10 +30,7 @@ public class ModulesServiceImpl implements ModulesService {
     private ModulesRepository modulesRepository;
 
     @Override
-    public List<ModuleResponse> getFilteredSubmodules(Map<String, String> filtros) {
-        String name = filtros.get("name");
-        String profileIdStr = filtros.get("profileId");
-
+    public List<ModuleResponse> getFilteredSubmodules(String profileIdStr, String name) {
         if (name == null || profileIdStr == null) {
             return Collections.emptyList();
         }
@@ -56,7 +58,7 @@ public class ModulesServiceImpl implements ModulesService {
     }
 
     @Override
-    public ModulesEntity save(ModuleRequest request) {
+    public ModuleResponse save(ModuleRequest request) {
         ModulesEntity module = new ModulesEntity();
         module.setName(request.getName());
         module.setRoute(request.getRoute());
@@ -68,21 +70,51 @@ public class ModulesServiceImpl implements ModulesService {
             module.setParent(parent);
         }
 
-        return modulesRepository.save(module);
+        return mapModule(modulesRepository.save(module));
     }
 
     @Override
-    public ModulesEntity findOne(String id) {
-        return modulesRepository.findById(UUID.fromString(id))
+    public ModuleResponse findOne(String id) {
+        ModulesEntity module = modulesRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new EntityNotFoundException("Module not found with id: " + id));
+
+        return mapModule(module);
     }
 
     @Override
-    public List<ModulesEntity> findAll() {
+    public List<ModuleResponse> findAll() {
         return modulesRepository.findAll()
                 .stream()
-                .filter(module -> module.getParent() == null) // Solo módulos de nivel superior
+                .map(this::mapModule)
                 .toList();
+    }
+
+    @Override
+    public ResponseServerDto multiSave(List<ModuleRequest> modules) {
+        List<Map<String, Object>> response = new ArrayList<>();
+        modules.forEach(item -> {
+            ModuleResponse resp = save(item);
+            if (resp != null) {
+                response.add(Map.of("module", resp.getName(), "status", true));
+            } else {
+                response.add(Map.of("module", item.getName(), "status", false));
+            }
+        });
+        return new ResponseServerDto("Modulos creados", HttpStatus.ACCEPTED, true, Map.of("data", response));
+    }
+
+    private PermissionResponse mapPermission(PermissionEntity source) {
+        PermissionResponse permission = new PermissionResponse();
+        ProfileDto profile = new ProfileDto();
+        profile.setId(source.getProfile().getId().toString());
+        profile.setName(source.getProfile().getName());
+        permission.setProfile(profile);
+        permission.setModule(source.getModule().getId().toString());
+        permission.setCanCreate(source.isCanCreate());
+        permission.setCanRead(source.isCanRead());
+        permission.setCanUpdate(source.isCanUpdate());
+        permission.setCanDelete(source.isCanDelete());
+        return permission;
     }
 
     private ModuleResponse mapModule(ModulesEntity source) {
@@ -91,9 +123,15 @@ public class ModulesServiceImpl implements ModulesService {
         module.setName(source.getName());
         module.setRoute(source.getRoute());
         module.setIconName(source.getIconName());
-        module.setRead(source.getPermissions().get(0).isCanRead());
-        module.setWrite(source.getPermissions().get(0).isCanUpdate());
-        module.setDelete(source.getPermissions().get(0).isCanDelete());
+        if (source.getPermissions() == null) {
+            module.setPermissions(Collections.emptyList());
+        } else {
+            List<PermissionResponse> permissions = source.getPermissions()
+                    .stream()
+                    .map(this::mapPermission)
+                    .toList();
+            module.setPermissions(permissions);
+        }
         module.setCreateAt(source.getCreateAt());
         module.setUpdateAt(source.getUpdateAt());
         module.setErased(source.getErased());

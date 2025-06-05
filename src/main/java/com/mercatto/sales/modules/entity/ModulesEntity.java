@@ -12,7 +12,6 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.util.List;
-import java.util.Set;
 
 import com.mercatto.sales.common.model.entity.CommonEntity;
 import com.mercatto.sales.permissions.entity.PermissionEntity;

@@ -1,6 +1,9 @@
 package com.mercatto.sales.modules.dto.response;
 
+import java.util.List;
+
 import com.mercatto.sales.common.model.dto.CommonResponse;
+import com.mercatto.sales.permissions.dto.response.PermissionResponse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -17,7 +20,5 @@ public class ModuleResponse extends CommonResponse{
     private String name;
     private String route;
     private String iconName;
-    private Boolean read;
-    private Boolean write;
-    private Boolean delete;
+    List<PermissionResponse> permissions;
 }

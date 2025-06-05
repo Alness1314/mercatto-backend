@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.modules.dto.response.ModuleResponse;
+import com.mercatto.sales.modules.service.ModulesService;
 import com.mercatto.sales.profiles.dto.request.ProfileRequest;
 import com.mercatto.sales.profiles.dto.response.ProfileResponse;
 import com.mercatto.sales.profiles.service.ProfileService;
@@ -28,6 +29,9 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class ProfileController {
     @Autowired
     private ProfileService profileService;
+
+    @Autowired
+    private ModulesService moduleService;
 
     @GetMapping
     public ResponseEntity<List<ProfileResponse>> findAll(@RequestParam Map<String, String> param) {
@@ -47,11 +51,11 @@ public class ProfileController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    /*@GetMapping("/{profileId}/modules")
-    public ResponseEntity<List<ModuleResponse>> getModulesByProfile(@PathVariable String profileId) {
-        List<ModuleResponse> modules = profileService.getModulesByProfile(profileId);
-        return new ResponseEntity<>(modules, HttpStatus.OK);
-    }*/
+    @GetMapping("/{profileId}/modules")
+    public ResponseEntity<List<ModuleResponse>> find(@PathVariable String profileId, @RequestParam("name") String param) {
+        List<ModuleResponse> response = moduleService.getFilteredSubmodules(profileId, param);
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
 
     @PostMapping("/multi-save")
     public ResponseEntity<ResponseServerDto> saveAll(@RequestBody List<ProfileRequest> request) {
