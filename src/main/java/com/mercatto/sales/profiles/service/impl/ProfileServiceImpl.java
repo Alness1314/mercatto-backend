@@ -1,5 +1,6 @@
 package com.mercatto.sales.profiles.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -86,11 +87,11 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public ResponseServerDto multiSaving(List<ProfileRequest> profileList) {
         try {
-            List<ProfileEntity> profiles = profileList.stream()
-                    .map(req -> ProfileEntity.builder()
-                            .name(req.getName())
-                            .build())
-                    .toList();
+            List<ProfileEntity> profiles = new ArrayList<>();
+            profileList.stream().forEach(item -> profiles.add(ProfileEntity.builder()
+                    .name(item.getName())
+                    .build()));
+
             profileRepository.saveAll(profiles);
             return new ResponseServerDto("the profiles have been created.", HttpStatus.ACCEPTED, true,
                     Map.of("data", profiles));

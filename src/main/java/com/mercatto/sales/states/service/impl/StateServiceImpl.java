@@ -1,5 +1,6 @@
 package com.mercatto.sales.states.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -15,6 +16,7 @@ import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.country.entity.CountryEntity;
 import com.mercatto.sales.country.repository.CountryRepository;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
+import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.states.dto.request.StateRequest;
 import com.mercatto.sales.states.dto.response.StateResponse;
 import com.mercatto.sales.states.entity.StateEntity;
@@ -105,13 +107,11 @@ public class StateServiceImpl implements StateService {
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         "Country not found"));
 
-        List<StateEntity> states = stateList.stream()
-                .map(req -> StateEntity.builder()
-                        .name(req)
-                        .country(country)
-                        .build())
-                .toList();
-
+        List<StateEntity> states = new ArrayList<>();
+        stateList.stream().forEach(item -> states.add(StateEntity.builder()
+                .name(item)
+                .country(country)
+                .build()));
         try {
             stateRepository.saveAll(states);
             return new ResponseServerDto("the states have been created.", HttpStatus.ACCEPTED, true);

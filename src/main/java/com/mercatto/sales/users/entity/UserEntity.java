@@ -13,15 +13,13 @@ import lombok.Setter;
 
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 
-import java.io.Serializable;
 import java.util.UUID;
 
 @Entity
 @Table(name = "users")
 @Getter
 @Setter
-public class UserEntity extends CommonEntity implements Serializable {
-    private static final long serialVersionUID = 1L;
+public class UserEntity extends CommonEntity {
 
     @Column(nullable = false, unique = true, columnDefinition = "character varying(64)")
     private String username;

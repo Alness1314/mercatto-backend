@@ -15,12 +15,13 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 @Getter
 @Setter
 @Entity
 @Table(name = "states")
-@Builder @AllArgsConstructor @NoArgsConstructor
+@SuperBuilder @AllArgsConstructor @NoArgsConstructor
 public class StateEntity extends CommonEntity implements Serializable {
     private static final long serialVersionUID = 1L;
 

@@ -1,5 +1,6 @@
 package com.mercatto.sales.country.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -18,6 +19,7 @@ import com.mercatto.sales.country.repository.CountryRepository;
 import com.mercatto.sales.country.service.CountryService;
 import com.mercatto.sales.country.specification.CountrySpecification;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
+import com.mercatto.sales.states.entity.StateEntity;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -92,12 +94,12 @@ public class CountryServiceImpl implements CountryService {
     @Override
     public ResponseServerDto multiSaving(List<CountryRequest> countryList) {
         try {
-            List<CountryEntity> countries = countryList.stream()
-                    .map(req -> CountryEntity.builder()
-                            .name(req.getName())
-                            .code(req.getCode())
-                            .build())
-                    .toList();
+
+            List<CountryEntity> countries = new ArrayList<>();
+            countryList.stream().forEach(item -> countries.add(CountryEntity.builder()
+                    .name(item.getName())
+                    .code(item.getCode())
+                    .build()));
             countryRepository.saveAll(countries);
             return new ResponseServerDto("the countries have been created.", HttpStatus.ACCEPTED, true, null);
         } catch (Exception e) {

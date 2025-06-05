@@ -1,5 +1,6 @@
 package com.mercatto.sales.cities.service.impl;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +19,7 @@ import com.mercatto.sales.cities.specification.CitySpecification;
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.config.GenericMapper;
+import com.mercatto.sales.country.entity.CountryEntity;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.states.entity.StateEntity;
 import com.mercatto.sales.states.repository.StateRepository;
@@ -108,12 +110,11 @@ public class CityServiceImpl implements CityService {
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         "State not found"));
 
-        List<CityEntity> cities = citiesList.stream()
-                .map(req -> CityEntity.builder()
-                        .name(req)
-                        .state(state)
-                        .build())
-                .toList();
+        List<CityEntity> cities = new ArrayList<>();
+        citiesList.stream().forEach(item -> cities.add(CityEntity.builder()
+                .name(item)
+                .state(state)
+                .build()));
 
         try {
             cityRepository.saveAll(cities);
