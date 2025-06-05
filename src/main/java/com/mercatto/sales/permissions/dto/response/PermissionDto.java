@@ -1,6 +1,5 @@
 package com.mercatto.sales.permissions.dto.response;
 
-import com.mercatto.sales.modules.dto.response.ModuleDto;
 import com.mercatto.sales.profiles.dto.response.ProfileDto;
 
 import lombok.AllArgsConstructor;
@@ -14,9 +13,8 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class PermissionResponse {
+public class PermissionDto {
     private ProfileDto profile;
-    private ModuleDto module;
     private Boolean canCreate;
     private Boolean canRead;
     private Boolean canUpdate;

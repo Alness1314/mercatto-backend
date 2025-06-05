@@ -18,7 +18,7 @@ import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.modules.repository.ModulesRepository;
 import com.mercatto.sales.modules.service.ModulesService;
 import com.mercatto.sales.modules.specification.ModuleSpecification;
-import com.mercatto.sales.permissions.dto.response.PermissionResponse;
+import com.mercatto.sales.permissions.dto.response.PermissionDto;
 import com.mercatto.sales.permissions.entity.PermissionEntity;
 import com.mercatto.sales.profiles.dto.response.ProfileDto;
 
@@ -103,13 +103,12 @@ public class ModulesServiceImpl implements ModulesService {
         return new ResponseServerDto("Modulos creados", HttpStatus.ACCEPTED, true, Map.of("data", response));
     }
 
-    private PermissionResponse mapPermission(PermissionEntity source) {
-        PermissionResponse permission = new PermissionResponse();
+    private PermissionDto mapPermission(PermissionEntity source) {
+        PermissionDto permission = new PermissionDto();
         ProfileDto profile = new ProfileDto();
         profile.setId(source.getProfile().getId().toString());
         profile.setName(source.getProfile().getName());
         permission.setProfile(profile);
-        permission.setModule(source.getModule().getId().toString());
         permission.setCanCreate(source.isCanCreate());
         permission.setCanRead(source.isCanRead());
         permission.setCanUpdate(source.isCanUpdate());
@@ -126,7 +125,7 @@ public class ModulesServiceImpl implements ModulesService {
         if (source.getPermissions() == null) {
             module.setPermissions(Collections.emptyList());
         } else {
-            List<PermissionResponse> permissions = source.getPermissions()
+            List<PermissionDto> permissions = source.getPermissions()
                     .stream()
                     .map(this::mapPermission)
                     .toList();

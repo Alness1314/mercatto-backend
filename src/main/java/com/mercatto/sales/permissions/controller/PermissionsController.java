@@ -18,6 +18,7 @@ import com.mercatto.sales.modules.dto.request.ModuleRequest;
 import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.modules.service.ModulesService;
 import com.mercatto.sales.permissions.dto.request.PermissionRequest;
+import com.mercatto.sales.permissions.dto.response.PermissionResponse;
 import com.mercatto.sales.permissions.entity.PermissionEntity;
 import com.mercatto.sales.permissions.service.PermissionService;
 
@@ -46,8 +47,8 @@ public class PermissionsController {
      */
 
     @PostMapping
-    public ResponseEntity<PermissionEntity> create(@RequestBody PermissionRequest request) {
-        PermissionEntity response = permissionService.save(request);
+    public ResponseEntity<PermissionResponse> create(@RequestBody PermissionRequest request) {
+        PermissionResponse response = permissionService.save(request);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 }
