@@ -3,8 +3,6 @@ package com.mercatto.sales.transactions.dto.request;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
-import com.mercatto.sales.users.dto.response.UserDto;
-
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -21,5 +19,5 @@ public class SalesRequest {
     private BigDecimal amount;
     private String paymentMethod;
     private Boolean sync;
-    private UserDto userId;
+    private String userId;
 }

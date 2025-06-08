@@ -1,6 +1,7 @@
 package com.mercatto.sales.config;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.function.Function;
 
@@ -17,6 +18,8 @@ import com.mercatto.sales.taxpayer.dto.response.LegalRepresentativeResponse;
 import com.mercatto.sales.taxpayer.dto.response.TaxpayerResponse;
 import com.mercatto.sales.taxpayer.entity.LegalRepresentativeEntity;
 import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
+import com.mercatto.sales.transactions.dto.request.SalesRequest;
+import com.mercatto.sales.transactions.entity.SalesEntity;
 
 import jakarta.annotation.PostConstruct;
 
@@ -46,7 +49,9 @@ public class GenericMapper {
     // Método para registrar convertidores personalizados
     private void registerConverters() {
         Converter<String, LocalDate> localDateConverter = createConverter(DateTimeUtils::parseToLocalDate);
+        Converter<String, LocalDateTime> localDateTimeConverter = createConverter(DateTimeUtils::parseToLocalDateTime);
         mapper.addConverter(localDateConverter);
+        mapper.addConverter(localDateTimeConverter);
     }
 
     // Método para registrar mapeos específicos
@@ -91,6 +96,11 @@ public class GenericMapper {
                 return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
             }).map(src -> src, LegalRepresentativeResponse::setRfc);
         });
+
+        Converter<String, LocalDateTime> localDateTimeConverter = createConverter(DateTimeUtils::parseToLocalDateTime);
+        mapper.createTypeMap(SalesRequest.class, SalesEntity.class)
+                .addMappings(m -> m.using(localDateTimeConverter)
+                        .map(SalesRequest::getTransactionDateTime, SalesEntity::setTransactionDateTime));
     }
 
     // Método para mapear un objeto

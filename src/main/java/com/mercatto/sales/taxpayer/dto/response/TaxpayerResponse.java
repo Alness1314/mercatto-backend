@@ -17,7 +17,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class TaxpayerResponse {
-     private UUID id;
+    private UUID id;
     private String rfc;
     private String typePerson;
     private String corporateReasonOrNaturalPerson;

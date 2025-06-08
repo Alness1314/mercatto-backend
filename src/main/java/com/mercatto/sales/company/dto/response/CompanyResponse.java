@@ -5,6 +5,7 @@ import java.util.UUID;
 
 import com.mercatto.sales.address.dto.response.AddressResponse;
 import com.mercatto.sales.files.dto.FileResponse;
+import com.mercatto.sales.taxpayer.dto.response.TaxpayerResponse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -28,4 +29,5 @@ public class CompanyResponse {
     private LocalDateTime createAt;
     private LocalDateTime updateAt;
     private Boolean erased;
+    private TaxpayerResponse taxpayer;
 }
