@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 
 import com.mercatto.sales.utils.DateTimeUtils;
 import com.mercatto.sales.utils.TextEncrypterUtil;
-import com.mercatto.sales.taxpayer.dto.response.LegalRepresentativeResponse;
 import com.mercatto.sales.taxpayer.dto.response.TaxpayerResponse;
 import com.mercatto.sales.taxpayer.entity.LegalRepresentativeEntity;
 import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
@@ -74,27 +73,22 @@ public class GenericMapper {
                 String key = source.getDataKey();
                 return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
             }).map(src -> src, TaxpayerResponse::setCorporateReasonOrNaturalPerson);
-        });
-
-        // Mapeo para desencriptar campos en LegalRepresentativeResponse
-        TypeMap<LegalRepresentativeEntity, LegalRepresentativeResponse> legalRepMap = mapper.createTypeMap(
-                LegalRepresentativeEntity.class,
-                LegalRepresentativeResponse.class);
-
-        legalRepMap.addMappings(mpa -> {
-            mpa.using(ctx -> {
-                LegalRepresentativeEntity src = (LegalRepresentativeEntity) ctx.getSource();
-                String value = src.getFullName();
-                String key = src.getDataKey();
-                return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
-            }).map(src -> src, LegalRepresentativeResponse::setFullName);
 
             mpa.using(ctx -> {
-                LegalRepresentativeEntity src = (LegalRepresentativeEntity) ctx.getSource();
-                String value = src.getRfc();
-                String key = src.getDataKey();
+                LegalRepresentativeEntity source = (LegalRepresentativeEntity) ctx.getSource();
+                String value = source.getRfc();
+                String key = source.getDataKey();
                 return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
-            }).map(src -> src, LegalRepresentativeResponse::setRfc);
+            }).map(TaxpayerEntity::getLegalRepresentative,
+                    (dest, value) -> dest.getLegalRepresentative().setRfc((String) value));
+
+            mpa.using(ctx -> {
+                LegalRepresentativeEntity source = (LegalRepresentativeEntity) ctx.getSource();
+                String value = source.getFullName();
+                String key = source.getDataKey();
+                return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
+            }).map(TaxpayerEntity::getLegalRepresentative,
+                    (dest, value) -> dest.getLegalRepresentative().setFullName((String) value));
         });
 
         Converter<String, LocalDateTime> localDateTimeConverter = createConverter(DateTimeUtils::parseToLocalDateTime);
@@ -108,6 +102,7 @@ public class GenericMapper {
         try {
             return mapper.map(source, targetClass);
         } catch (Exception e) {
+            e.printStackTrace();
             throw new MappingException(
                     "Error al mapear " + source.getClass().getSimpleName() + " a " + targetClass.getSimpleName(), e);
         }
