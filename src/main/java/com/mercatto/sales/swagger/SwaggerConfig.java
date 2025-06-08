@@ -32,7 +32,7 @@ public class SwaggerConfig {
         return new Info()
                 .title("Mercatto")
                 .description(
-                        "Application to manage ??? and generate monthly reports. Available on mobile and web.")
+                        "AREST API for managing multiple points of sale in different locations, available via web or mobile.")
                 .version("1.0")
                 .license(new License()
                         .name("Alness Zadro")

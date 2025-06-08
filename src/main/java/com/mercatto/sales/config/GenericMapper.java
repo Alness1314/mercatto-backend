@@ -13,26 +13,10 @@ import org.springframework.stereotype.Component;
 
 import com.mercatto.sales.utils.DateTimeUtils;
 import com.mercatto.sales.utils.TextEncrypterUtil;
-import com.mercatto.sales.common.model.entity.CommonEntity;
-import com.mercatto.sales.country.dto.request.CountryRequest;
-import com.mercatto.sales.country.dto.response.CountryResponse;
-import com.mercatto.sales.country.entity.CountryEntity;
-import com.mercatto.sales.states.dto.request.StateRequest;
-import com.mercatto.sales.states.dto.response.StateResponse;
-import com.mercatto.sales.states.entity.StateEntity;
-import com.mercatto.sales.taxpayer.dto.request.LegalRepresentativeRequest;
-import com.mercatto.sales.taxpayer.dto.request.TaxpayerRequest;
 import com.mercatto.sales.taxpayer.dto.response.LegalRepresentativeResponse;
 import com.mercatto.sales.taxpayer.dto.response.TaxpayerResponse;
 import com.mercatto.sales.taxpayer.entity.LegalRepresentativeEntity;
 import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
-import com.mercatto.sales.users.dto.request.UserRequest;
-import com.mercatto.sales.users.dto.response.UserResponse;
-import com.mercatto.sales.users.entity.UserEntity;
-import com.mercatto.sales.address.dto.request.AddressRequest;
-import com.mercatto.sales.address.dto.response.AddressResponse;
-import com.mercatto.sales.address.entity.AddressEntity;
-import com.mercatto.sales.common.model.dto.CommonResponse;
 
 import jakarta.annotation.PostConstruct;
 
