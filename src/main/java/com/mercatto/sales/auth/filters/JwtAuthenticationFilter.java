@@ -75,6 +75,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         CustomUser customUser = (CustomUser) authResult.getPrincipal();
         String username = customUser.getUsername();
         UUID userId = customUser.getUserId();
+        UUID companyId = customUser.getCompanyId();
 
         Collection<? extends GrantedAuthority> profiles = authResult.getAuthorities();
         boolean isAdmin = profiles.stream().anyMatch(res -> res.getAuthority().equals(DefaultProfiles.ADMIN.getName()));
@@ -83,6 +84,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         claims.put("authorities", new ObjectMapper().writeValueAsString(profiles));
         claims.put("admin", isAdmin);
         claims.put("id", userId);
+        claims.put("company", companyId);
         String token = Jwts.builder()
                 .setClaims(claims)
                 .setSubject(username)

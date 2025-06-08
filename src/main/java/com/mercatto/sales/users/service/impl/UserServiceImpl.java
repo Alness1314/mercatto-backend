@@ -159,7 +159,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority(user.getProfile().getName()));
         return new CustomUser(user.getUsername(), user.getPassword(), authorities,
-                user.getId());
+                user.getId(), user.getCompany() != null ? user.getCompany().getId() : null);
     }
 
     @Override

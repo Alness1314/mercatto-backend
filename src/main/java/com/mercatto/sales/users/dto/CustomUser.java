@@ -9,15 +9,21 @@ import org.springframework.security.core.userdetails.User;
 
 public class CustomUser extends User {
     private final UUID userId;
+    private final UUID companyId;
 
     public CustomUser(String username, String password, Collection<? extends GrantedAuthority> authorities,
-            UUID userId) {
+            UUID userId, UUID companyId) {
         super(username, password, authorities);
         this.userId = userId;
+        this.companyId = companyId;
     }
 
     public UUID getUserId() {
         return userId;
+    }
+
+    public UUID getCompanyId() {
+        return companyId;
     }
 
     @Override
