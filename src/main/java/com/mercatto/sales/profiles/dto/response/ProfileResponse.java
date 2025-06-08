@@ -1,6 +1,7 @@
 package com.mercatto.sales.profiles.dto.response;
 
-import com.mercatto.sales.common.model.dto.CommonResponse;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,6 +14,10 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProfileResponse extends CommonResponse{
+public class ProfileResponse{
+     private UUID id;
     private String name;
+    private LocalDateTime createAt;
+    private LocalDateTime updateAt;
+    private Boolean erased;
 }

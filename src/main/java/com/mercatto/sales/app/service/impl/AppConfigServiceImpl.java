@@ -6,7 +6,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -143,10 +142,8 @@ public class AppConfigServiceImpl implements AppConfigService {
 
     @Override
     public ResponseServerDto createDefaultUser() {
-        Optional<UserResponse> stateOpt = userService.find(Map.of("username", "master-admin@msn.com"))
-                .stream()
-                .findFirst();
-        if (stateOpt.isPresent()) {
+        UserResponse stateOpt = userService.findByUsername("master-admin@msn.com");
+        if (stateOpt != null) {
             return new ResponseServerDto("The user already exist",
                     HttpStatus.OK, true, null);
         }
@@ -163,10 +160,9 @@ public class AppConfigServiceImpl implements AppConfigService {
                     .fullName("Soporte TI")
                     .sendExpirationAlert(false)
                     .profile(profile.get().getId().toString())
-                    .companyId(UUID.randomUUID().toString())
                     .build();
 
-            userService.save(user);
+            userService.saveWithoutCompany(user);
         }
         return new ResponseServerDto("The user created",
                 HttpStatus.OK, true, null);

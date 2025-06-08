@@ -1,6 +1,6 @@
 package com.mercatto.sales.country.dto.response;
 
-import com.mercatto.sales.common.model.dto.CommonResponse;
+import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +13,9 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class CountryResponse extends CommonResponse {
+public class CountryResponse{
+    private UUID id;
     private String name;
     private String code;
+    private Boolean erased;
 }

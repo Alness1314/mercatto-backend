@@ -19,7 +19,6 @@ import com.mercatto.sales.country.repository.CountryRepository;
 import com.mercatto.sales.country.service.CountryService;
 import com.mercatto.sales.country.specification.CountrySpecification;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
-import com.mercatto.sales.states.entity.StateEntity;
 
 import lombok.extern.slf4j.Slf4j;
 

@@ -34,6 +34,9 @@ public class UserSpecification implements Specification<UserEntity> {
                 case "erased":
                     specification = specification.and(this.filterByErased(entry.getValue()));
                     break;
+                case "company":
+                    specification = specification.and(this.filterByCompanyId(entry.getValue()));
+                    break;
                 default:
                     break;
             }
@@ -43,6 +46,10 @@ public class UserSpecification implements Specification<UserEntity> {
 
     private Specification<UserEntity> filterById(String id) {
         return (root, query, cb) -> cb.equal(root.<UUID>get("id"), UUID.fromString(id));
+    }
+
+    private Specification<UserEntity> filterByCompanyId(String companyId) {
+        return (root, query, cb) -> cb.equal(root.get("company").get("id"), UUID.fromString(companyId));
     }
 
     private Specification<UserEntity> filterByUsername(String username) {

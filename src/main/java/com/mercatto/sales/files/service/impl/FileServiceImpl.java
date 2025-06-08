@@ -18,6 +18,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.core.io.Resource;
@@ -29,6 +30,7 @@ import com.mercatto.sales.files.service.FileService;
 
 import jakarta.annotation.PostConstruct;
 
+@Service
 public class FileServiceImpl implements FileService {
     @Autowired
     private FileRepository fileRepository;

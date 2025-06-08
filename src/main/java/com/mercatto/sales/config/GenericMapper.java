@@ -7,14 +7,31 @@ import java.util.function.Function;
 import org.modelmapper.AbstractConverter;
 import org.modelmapper.Converter;
 import org.modelmapper.ModelMapper;
+import org.modelmapper.TypeMap;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.stereotype.Component;
 
 import com.mercatto.sales.utils.DateTimeUtils;
+import com.mercatto.sales.utils.TextEncrypterUtil;
 import com.mercatto.sales.common.model.entity.CommonEntity;
+import com.mercatto.sales.country.dto.request.CountryRequest;
+import com.mercatto.sales.country.dto.response.CountryResponse;
+import com.mercatto.sales.country.entity.CountryEntity;
+import com.mercatto.sales.states.dto.request.StateRequest;
+import com.mercatto.sales.states.dto.response.StateResponse;
+import com.mercatto.sales.states.entity.StateEntity;
+import com.mercatto.sales.taxpayer.dto.request.LegalRepresentativeRequest;
+import com.mercatto.sales.taxpayer.dto.request.TaxpayerRequest;
+import com.mercatto.sales.taxpayer.dto.response.LegalRepresentativeResponse;
+import com.mercatto.sales.taxpayer.dto.response.TaxpayerResponse;
+import com.mercatto.sales.taxpayer.entity.LegalRepresentativeEntity;
+import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
 import com.mercatto.sales.users.dto.request.UserRequest;
 import com.mercatto.sales.users.dto.response.UserResponse;
 import com.mercatto.sales.users.entity.UserEntity;
+import com.mercatto.sales.address.dto.request.AddressRequest;
+import com.mercatto.sales.address.dto.response.AddressResponse;
+import com.mercatto.sales.address.entity.AddressEntity;
 import com.mercatto.sales.common.model.dto.CommonResponse;
 
 import jakarta.annotation.PostConstruct;
@@ -39,7 +56,7 @@ public class GenericMapper {
         mapper.getConfiguration()
                 .setSkipNullEnabled(true)
                 .setFieldMatchingEnabled(true)
-                .setMatchingStrategy(MatchingStrategies.STANDARD);
+                .setMatchingStrategy(MatchingStrategies.STRICT);
     }
 
     // Método para registrar convertidores personalizados
@@ -50,35 +67,46 @@ public class GenericMapper {
 
     // Método para registrar mapeos específicos
     private void registerMappings() {
+        // Mapeo para desencriptar campos en TaxpayerResponse
+        TypeMap<TaxpayerEntity, TaxpayerResponse> taxpayerMap = mapper.createTypeMap(TaxpayerEntity.class,
+                TaxpayerResponse.class);
 
-        mapper.createTypeMap(CommonEntity.class, CommonResponse.class)
-                .addMappings(m -> {
-                    m.map(CommonEntity::getId, CommonResponse::setId);
-                    m.map(CommonEntity::getCreateAt, CommonResponse::setCreateAt);
-                    m.map(CommonEntity::getUpdateAt, CommonResponse::setUpdateAt);
-                    m.map(CommonEntity::getErased, CommonResponse::setErased);
-                });
+        taxpayerMap.addMappings(mpa -> {
+            mpa.using(ctx -> {
+                TaxpayerEntity source = (TaxpayerEntity) ctx.getSource();
+                String value = source.getRfc();
+                String key = source.getDataKey();
+                return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
+            }).map(src -> src, TaxpayerResponse::setRfc);
 
-        // Inverso: de CommonResponse a CommonEntity
-        mapper.createTypeMap(CommonResponse.class, CommonEntity.class)
-                .addMappings(m -> {
-                    m.map(CommonResponse::getId, CommonEntity::setId);
-                    m.map(CommonResponse::getCreateAt, CommonEntity::setCreateAt);
-                    m.map(CommonResponse::getUpdateAt, CommonEntity::setUpdateAt);
-                    m.map(CommonResponse::getErased, CommonEntity::setErased);
-                });
+            mpa.using(ctx -> {
+                TaxpayerEntity source = (TaxpayerEntity) ctx.getSource();
+                String value = source.getCorporateReasonOrNaturalPerson();
+                String key = source.getDataKey();
+                return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
+            }).map(src -> src, TaxpayerResponse::setCorporateReasonOrNaturalPerson);
+        });
 
-        mapper.createTypeMap(UserResponse.class, UserEntity.class)
-                .addMappings(m -> {
-                    m.map(UserResponse::getCompanyId, UserEntity::setCompanyId);
-                    m.skip(UserEntity::setId); // Evita que documentoId sobrescriba id
-                });
+        // Mapeo para desencriptar campos en LegalRepresentativeResponse
+        TypeMap<LegalRepresentativeEntity, LegalRepresentativeResponse> legalRepMap = mapper.createTypeMap(
+                LegalRepresentativeEntity.class,
+                LegalRepresentativeResponse.class);
 
-        mapper.createTypeMap(UserRequest.class, UserEntity.class)
-                .addMappings(m -> {
-                    m.map(UserRequest::getCompanyId, UserEntity::setCompanyId);
-                    m.skip(UserEntity::setId); // Evita que documentoId sobrescriba id
-                });
+        legalRepMap.addMappings(mpa -> {
+            mpa.using(ctx -> {
+                LegalRepresentativeEntity src = (LegalRepresentativeEntity) ctx.getSource();
+                String value = src.getFullName();
+                String key = src.getDataKey();
+                return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
+            }).map(src -> src, LegalRepresentativeResponse::setFullName);
+
+            mpa.using(ctx -> {
+                LegalRepresentativeEntity src = (LegalRepresentativeEntity) ctx.getSource();
+                String value = src.getRfc();
+                String key = src.getDataKey();
+                return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
+            }).map(src -> src, LegalRepresentativeResponse::setRfc);
+        });
     }
 
     // Método para mapear un objeto

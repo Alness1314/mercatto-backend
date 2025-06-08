@@ -1,6 +1,7 @@
 package com.mercatto.sales.files.dto;
 
-import com.mercatto.sales.common.model.dto.CommonResponse;
+import java.time.LocalDateTime;
+import java.util.UUID;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,8 +14,12 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class FileResponse extends CommonResponse{
+public class FileResponse{
+    private UUID id;
     private String name;
     private String extension;
     private String mimeType;
+    private LocalDateTime createAt;
+    private LocalDateTime updateAt;
+    private Boolean erased;
 }

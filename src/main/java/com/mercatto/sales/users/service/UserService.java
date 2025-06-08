@@ -8,10 +8,11 @@ import com.mercatto.sales.users.dto.response.UserResponse;
 import com.mercatto.sales.common.model.ResponseServerDto;
 
 public interface UserService {
-    public UserResponse save(UserRequest request);
-    public UserResponse findOne(String id);
+    public UserResponse save(String companyId, UserRequest request);
+    public UserResponse saveWithoutCompany(UserRequest request);
+    public UserResponse findOne(String companyId, String id);
     public UserResponse findByUsername(String username);
-    public List<UserResponse> find(Map<String, String> params);
-    public UserResponse update(String id, UserRequest request);
-    public ResponseServerDto delete(String id);
+    public List<UserResponse> find(String companyId, Map<String, String> params);
+    public UserResponse update(String companyId, String id, UserRequest request);
+    public ResponseServerDto delete(String companyId, String id);
 }

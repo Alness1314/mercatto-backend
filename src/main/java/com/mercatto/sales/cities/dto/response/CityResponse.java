@@ -1,18 +1,20 @@
 package com.mercatto.sales.cities.dto.response;
 
-import com.mercatto.sales.common.model.dto.CommonResponse;
+import java.util.UUID;
 
 import lombok.AllArgsConstructor;
-import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import lombok.experimental.SuperBuilder;
 
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-public class CityResponse extends CommonResponse {
+@SuperBuilder
+public class CityResponse {
+    private UUID id;
     private String name;
+    private Boolean erased;
 }

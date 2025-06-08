@@ -16,7 +16,6 @@ import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.country.entity.CountryEntity;
 import com.mercatto.sales.country.repository.CountryRepository;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
-import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.states.dto.request.StateRequest;
 import com.mercatto.sales.states.dto.response.StateResponse;
 import com.mercatto.sales.states.entity.StateEntity;

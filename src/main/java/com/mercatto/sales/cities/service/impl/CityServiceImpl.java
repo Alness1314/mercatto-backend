@@ -19,7 +19,6 @@ import com.mercatto.sales.cities.specification.CitySpecification;
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.config.GenericMapper;
-import com.mercatto.sales.country.entity.CountryEntity;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.states.entity.StateEntity;
 import com.mercatto.sales.states.repository.StateRepository;
@@ -85,7 +84,7 @@ public class CityServiceImpl implements CityService {
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         "City not found."));
         try {
-            city.setErased(true);
+             city.setErased(true);
             cityRepository.save(city);
             return new ResponseServerDto("The city has been removed.", HttpStatus.ACCEPTED, true, null);
         } catch (Exception e) {

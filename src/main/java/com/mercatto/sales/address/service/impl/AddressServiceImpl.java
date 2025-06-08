@@ -30,8 +30,8 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class AddressServiceImpl implements AddressService{
-     @Autowired
+public class AddressServiceImpl implements AddressService {
+    @Autowired
     private AddressRepository addressRepository;
 
     @Autowired
@@ -106,4 +106,5 @@ public class AddressServiceImpl implements AddressService{
     private Specification<AddressEntity> filterWithParameters(Map<String, String> parameters) {
         return new AddressSpecification().getSpecificationByFilters(parameters);
     }
+
 }

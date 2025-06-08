@@ -1,31 +1,42 @@
 package com.mercatto.sales.country.entity;
 
-import com.mercatto.sales.common.model.entity.CommonEntity;
-
-import java.io.Serializable;
+import java.util.UUID;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.experimental.SuperBuilder;
-
 @Entity
 @Table(name = "country")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@SuperBuilder
-public class CountryEntity extends CommonEntity implements Serializable {
-    private static final long serialVersionUID = 1L;
+@Builder
+public class CountryEntity {
+    @Id
+    @GeneratedValue(generator = "uuid2")
+    @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
+    private UUID id;
 
     @Column(nullable = false, columnDefinition = "character varying(64)")
     private String name;
 
     @Column(name = "code", nullable = true, columnDefinition = "character varying(5)")
     private String code;
+
+    @Column(nullable = false, columnDefinition = "boolean")
+    private Boolean erased;
+
+    @PrePersist
+    public void prePersist() {
+        setErased(false);
+    }
 }

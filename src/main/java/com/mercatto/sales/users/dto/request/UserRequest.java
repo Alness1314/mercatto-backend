@@ -16,6 +16,5 @@ public class UserRequest {
     private String password;
     private String fullName;
     private Boolean sendExpirationAlert;
-    private String companyId;
     private String profile;
 }

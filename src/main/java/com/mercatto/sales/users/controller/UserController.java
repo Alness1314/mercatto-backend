@@ -21,27 +21,27 @@ import com.mercatto.sales.users.service.UserService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("${api.prefix}/users")
+@RequestMapping("${api.prefix}/company")
 @Tag(name = "Users", description = ".")
 public class UserController {
      @Autowired
     private UserService userService;
 
-    @GetMapping
-    public ResponseEntity<List<UserResponse>> findAll(@RequestParam Map<String, String> param) {
-        List<UserResponse> response = userService.find(param);
+    @GetMapping("/{companyId}/users")
+    public ResponseEntity<List<UserResponse>> findAll(@PathVariable String companyId, @RequestParam Map<String, String> param) {
+        List<UserResponse> response = userService.find(companyId, param);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<UserResponse> findOne(@PathVariable String id) {
-        UserResponse response = userService.findOne(id);
+    @GetMapping("/{companyId}/users/{id}")
+    public ResponseEntity<UserResponse> findOne(@PathVariable String companyId, @PathVariable String id) {
+        UserResponse response = userService.findOne(companyId, id);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping
-    public ResponseEntity<UserResponse> postMethodName(@RequestBody UserRequest request) {
-        UserResponse response = userService.save(request);
+    @PostMapping("/{companyId}/users")
+    public ResponseEntity<UserResponse> postMethodName(@PathVariable String companyId, @RequestBody UserRequest request) {
+        UserResponse response = userService.save(companyId, request);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }
