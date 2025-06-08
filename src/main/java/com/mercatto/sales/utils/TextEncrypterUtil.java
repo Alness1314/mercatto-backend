@@ -1,5 +1,6 @@
 package com.mercatto.sales.utils;
 
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.util.Base64;
 
@@ -37,7 +38,7 @@ public class TextEncrypterUtil {
             GCMParameterSpec gcmSpec = new GCMParameterSpec(GCM_TAG_LENGTH * 8, iv);
 
             cipher.init(Cipher.ENCRYPT_MODE, key, gcmSpec);
-            byte[] encryptedBytes = cipher.doFinal(text.getBytes());
+            byte[] encryptedBytes = cipher.doFinal(text.getBytes(StandardCharsets.UTF_8));
 
             // Prepend IV to the encrypted text
             byte[] encryptedWithIv = new byte[iv.length + encryptedBytes.length];
@@ -69,7 +70,7 @@ public class TextEncrypterUtil {
             cipher.init(Cipher.DECRYPT_MODE, key, gcmSpec);
             byte[] decryptedBytes = cipher.doFinal(encryptedBytes);
 
-            return new String(decryptedBytes);
+            return new String(decryptedBytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             log.error("Error decrypting the text", e);
             throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED, "Error decrypting the text.");
