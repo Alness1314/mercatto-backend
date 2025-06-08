@@ -1,15 +1,14 @@
-package com.mercatto.sales.company.entity;
+package com.mercatto.sales.products.entity;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
-import com.mercatto.sales.address.entity.AddressEntity;
-import com.mercatto.sales.files.entity.FileEntity;
-import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
-import com.mercatto.sales.users.entity.UserEntity;
+import com.mercatto.sales.categories.entity.CategoryEntity;
+import com.mercatto.sales.company.entity.CompanyEntity;
+import com.mercatto.sales.unit.entity.UnitMeasurement;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -17,8 +16,6 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -28,45 +25,48 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "company")
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class CompanyEntity {
+@Entity
+@Table(name = "products")
+public class ProductEntity {
     @Id
     @GeneratedValue(generator = "uuid2")
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "name", nullable = false, columnDefinition = "character varying(128)")
+    @Column(nullable = false, columnDefinition = "character varying(64)")
     private String name;
 
-    @Column(name = "description", nullable = false, columnDefinition = "character varying(256)")
-    private String description;
+    @Column(nullable = false, columnDefinition = "character varying(256)")
+    private String code;
 
-    @Column(name = "email", nullable = false, columnDefinition = "character varying(32)")
-    private String email;
+    @Column(nullable = false, columnDefinition = "numeric(18,4)")
+    private BigDecimal price;
 
-    @Column(name = "phone", nullable = false, columnDefinition = "character varying(20)")
-    private String phone;
+    @Column(nullable = false, columnDefinition = "bigint")
+    private BigInteger stock;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "category_id", nullable = false)
+    private CategoryEntity category;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unit_id", nullable = false)
+    private UnitMeasurement unit;
+
+    @Column(nullable = false, columnDefinition = "boolean")
+    private Boolean active;
+
+    @Column(nullable = false, columnDefinition = "numeric(18,4)")
+    private BigDecimal tax;
 
     @ManyToOne
-    @JoinColumn(name = "address_id", nullable = false)
-    private AddressEntity address;
-
-    @OneToOne
-    @JoinColumn(name = "image_id", unique = true, nullable = true)
-    private FileEntity image;
-
-    @ManyToOne
-    @JoinColumn(name = "taxpayer_id", nullable = false)
-    private TaxpayerEntity taxpayer;
-
-    @OneToMany(mappedBy = "company", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<UserEntity> users;
+    @JoinColumn(name = "company_id", nullable = true)
+    private CompanyEntity company;
 
     @Column(name = "create_at", nullable = false, updatable = false, columnDefinition = "timestamp without time zone")
     private LocalDateTime createAt;
@@ -80,6 +80,7 @@ public class CompanyEntity {
     @PrePersist
     public void prePersist() {
         setErased(false);
+        setActive(true);
         setCreateAt(LocalDateTime.now());
         setUpdateAt(LocalDateTime.now());
     }
@@ -88,5 +89,4 @@ public class CompanyEntity {
     public void preUpdate() {
         setUpdateAt(LocalDateTime.now());
     }
-
 }

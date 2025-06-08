@@ -1,24 +1,16 @@
-package com.mercatto.sales.company.entity;
+package com.mercatto.sales.unit.entity;
 
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 
-import com.mercatto.sales.address.entity.AddressEntity;
-import com.mercatto.sales.files.entity.FileEntity;
-import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
-import com.mercatto.sales.users.entity.UserEntity;
+import com.mercatto.sales.company.entity.CompanyEntity;
 
-import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToMany;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -28,45 +20,31 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-@Entity
-@Table(name = "company")
 @Getter
 @Setter
-@AllArgsConstructor
 @NoArgsConstructor
+@AllArgsConstructor
 @Builder
-public class CompanyEntity {
+@Entity
+@Table(name = "unit_measurement")
+public class UnitMeasurement {
     @Id
     @GeneratedValue(generator = "uuid2")
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
-    @Column(name = "name", nullable = false, columnDefinition = "character varying(128)")
+    @Column(nullable = false, columnDefinition = "character varying(64)")
     private String name;
 
-    @Column(name = "description", nullable = false, columnDefinition = "character varying(256)")
+    @Column(nullable = false, columnDefinition = "character varying(64)")
+    private String abbreviation;
+
+    @Column(nullable = false, columnDefinition = "character varying(255)")
     private String description;
 
-    @Column(name = "email", nullable = false, columnDefinition = "character varying(32)")
-    private String email;
-
-    @Column(name = "phone", nullable = false, columnDefinition = "character varying(20)")
-    private String phone;
-
     @ManyToOne
-    @JoinColumn(name = "address_id", nullable = false)
-    private AddressEntity address;
-
-    @OneToOne
-    @JoinColumn(name = "image_id", unique = true, nullable = true)
-    private FileEntity image;
-
-    @ManyToOne
-    @JoinColumn(name = "taxpayer_id", nullable = false)
-    private TaxpayerEntity taxpayer;
-
-    @OneToMany(mappedBy = "company", fetch = FetchType.LAZY, cascade = CascadeType.ALL)
-    private List<UserEntity> users;
+    @JoinColumn(name = "company_id", nullable = true)
+    private CompanyEntity company;
 
     @Column(name = "create_at", nullable = false, updatable = false, columnDefinition = "timestamp without time zone")
     private LocalDateTime createAt;
@@ -88,5 +66,4 @@ public class CompanyEntity {
     public void preUpdate() {
         setUpdateAt(LocalDateTime.now());
     }
-
 }
