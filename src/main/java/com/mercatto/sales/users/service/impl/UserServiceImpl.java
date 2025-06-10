@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
@@ -20,12 +22,16 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.users.dto.request.UserRequest;
 import com.mercatto.sales.users.dto.response.UserResponse;
 import com.mercatto.sales.users.entity.UserEntity;
 import com.mercatto.sales.users.repository.UserRepository;
 import com.mercatto.sales.users.service.UserService;
 import com.mercatto.sales.users.specification.UserSpecification;
+
+import jakarta.annotation.PostConstruct;
+
 import com.mercatto.sales.profiles.repository.ProfileRepository;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.config.GenericMapper;
@@ -61,10 +67,21 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Autowired
     GenericMapper mapper;
 
+    ModelMapper mapperUpdate = new ModelMapper();
+
+    @PostConstruct
+    private void init() {
+        mapperUpdate.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+    }
+
     @Override
     public UserResponse save(String companyId, UserRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
         UserEntity newUser = mapper.map(request, UserEntity.class);
         try {
             if (request.getProfile() == null) {
@@ -146,12 +163,79 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     public UserResponse update(String companyId, String id, UserRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+        // Find existing company and user
+        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        UserEntity existingUser = userRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found in this company"));
+
+        try {
+            // Validate profile
+            if (request.getProfile() == null) {
+                throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT, "Profile not found");
+            }
+
+            // Update image if provided
+            if (request.getImageId() != null) {
+                FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                        .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                                "Image not found"));
+                existingUser.setImage(imageFile);
+            } else {
+                existingUser.setImage(null); // Clear image if no imageId provided
+            }
+
+            // Update profile
+            ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
+            existingUser.setProfile(profile);
+
+            // Update other fields
+            mapperUpdate.map(request, existingUser);
+            existingUser.setCompany(company); // Maintain company relationship
+
+            // Update password if provided
+            if (request.getPassword() != null && !request.getPassword().isEmpty()) {
+                existingUser.setPassword(passwordEncoder.encode(request.getPassword()));
+            }
+
+            UserEntity updatedUser = userRepository.save(existingUser);
+            return mapperDto(updatedUser);
+        } catch (DataIntegrityViolationException ex) {
+            if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
+                throw new ResponseStatusException(
+                        HttpStatus.CONFLICT, "Username already exists: " + request.getUsername(), ex);
+            }
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST, "Data integrity violation", ex);
+        } catch (ResponseStatusException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Error updating user", ex);
+            throw new ResponseStatusException(
+                    HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", ex);
+        }
     }
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+        companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        UserEntity existingUser = userRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found in this company"));
+
+        try {
+            existingUser.setErased(true);
+            userRepository.save(existingUser);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
 
     private UserResponse mapperDto(UserEntity source) {

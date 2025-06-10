@@ -12,6 +12,4 @@ public interface CityService {
     public CityResponse findOne(String id);
     public CityResponse save(CityRequest request);
     public ResponseServerDto multiSaving(String stateId, List<String> citiesList);
-    public CityResponse update(String id, CityRequest request);
-    public ResponseServerDto delete(String id);
 }

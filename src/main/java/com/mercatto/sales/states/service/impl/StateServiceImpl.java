@@ -71,27 +71,6 @@ public class StateServiceImpl implements StateService {
         return mapperDto(newState);
     }
 
-    @Override
-    public StateResponse update(String id, StateRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
-    }
-
-    @Override
-    public ResponseServerDto delete(String id) {
-        StateEntity state = stateRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "State not found"));
-        try {
-            state.setErased(true);
-            stateRepository.save(state);
-            return new ResponseServerDto("The state has been removed.", HttpStatus.ACCEPTED, true);
-        } catch (Exception e) {
-            log.error("Error to delete country ", e);
-            return new ResponseServerDto("An error occurred while deleting the state", HttpStatus.METHOD_NOT_ALLOWED,
-                    false);
-        }
-    }
-
     private StateResponse mapperDto(StateEntity source) {
         return mapper.map(source, StateResponse.class);
     }

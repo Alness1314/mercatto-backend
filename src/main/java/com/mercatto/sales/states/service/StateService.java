@@ -12,6 +12,4 @@ public interface StateService {
     public StateResponse findOne(String id);
     public StateResponse save(StateRequest request);
     public ResponseServerDto multiSaving(String countryId, List<String> stateList);
-    public StateResponse update(String id, StateRequest request);
-    public ResponseServerDto delete(String id);
 }

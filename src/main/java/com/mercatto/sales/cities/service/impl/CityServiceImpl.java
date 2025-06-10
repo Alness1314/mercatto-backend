@@ -73,28 +73,6 @@ public class CityServiceImpl implements CityService {
         return mapperDto(newCity);
     }
 
-    @Override
-    public CityResponse update(String id, CityRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
-    }
-
-    @Override
-    public ResponseServerDto delete(String id) {
-        CityEntity city = cityRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "City not found."));
-        try {
-             city.setErased(true);
-            cityRepository.save(city);
-            return new ResponseServerDto("The city has been removed.", HttpStatus.ACCEPTED, true, null);
-        } catch (Exception e) {
-            log.error("Error to delete country ", e);
-            return new ResponseServerDto("An error occurred while deleting the city", HttpStatus.METHOD_NOT_ALLOWED,
-                    false,
-                    null);
-        }
-    }
-
     private CityResponse mapperDto(CityEntity source) {
         return mapper.map(source, CityResponse.class);
     }
