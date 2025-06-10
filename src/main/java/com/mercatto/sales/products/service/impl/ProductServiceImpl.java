@@ -20,6 +20,8 @@ import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
+import com.mercatto.sales.files.entity.FileEntity;
+import com.mercatto.sales.files.repository.FileRepository;
 import com.mercatto.sales.products.dto.request.ProductRequest;
 import com.mercatto.sales.products.dto.response.ProductResponse;
 import com.mercatto.sales.products.entity.ProductEntity;
@@ -48,6 +50,9 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private GenericMapper mapper;
+
+    @Autowired
+    private FileRepository fileRepository;
 
     @Override
     public List<ProductResponse> find(String companyId, Map<String, String> params) {
@@ -85,6 +90,14 @@ public class ProductServiceImpl implements ProductService {
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         "Unit not found"));
         product.setUnit(um);
+
+        if (request.getImageId() != null) {
+            log.info("ingreso a imagen");
+            FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                    .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                            "image not found"));
+            product.setImage(imageFile);
+        }
 
         try {
             product.setCompany(company);

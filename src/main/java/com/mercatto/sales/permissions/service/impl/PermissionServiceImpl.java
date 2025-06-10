@@ -1,10 +1,19 @@
 package com.mercatto.sales.permissions.service.impl;
 
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
+import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.company.entity.CompanyEntity;
+import com.mercatto.sales.company.repository.CompanyRepository;
 import com.mercatto.sales.modules.dto.response.ModuleDto;
 import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.modules.repository.ModulesRepository;
@@ -14,6 +23,7 @@ import com.mercatto.sales.permissions.entity.PermissionEntity;
 import com.mercatto.sales.permissions.entity.PermissionId;
 import com.mercatto.sales.permissions.repository.PermissionRepository;
 import com.mercatto.sales.permissions.service.PermissionService;
+import com.mercatto.sales.permissions.specification.PermissionSpecification;
 import com.mercatto.sales.profiles.dto.response.ProfileDto;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.profiles.repository.ProfileRepository;
@@ -27,10 +37,15 @@ public class PermissionServiceImpl implements PermissionService {
     private ModulesRepository modulesRepository;
 
     @Autowired
+    private CompanyRepository companyRepository;
+
+    @Autowired
     private PermissionRepository permissionRepository;
 
     @Override
-    public PermissionResponse save(PermissionRequest request) {
+    public PermissionResponse save(String companyId, PermissionRequest request) {
+        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
         PermissionEntity permission = new PermissionEntity();
 
         // Asignar clave compuesta
@@ -54,6 +69,7 @@ public class PermissionServiceImpl implements PermissionService {
         permission.setCanRead(request.isCanRead());
         permission.setCanUpdate(request.isCanUpdate());
         permission.setCanDelete(request.isCanDelete());
+        permission.setCompany(company);
 
         return mapPermission(permissionRepository.save(permission));
     }
@@ -76,21 +92,30 @@ public class PermissionServiceImpl implements PermissionService {
     }
 
     @Override
-    public PermissionResponse findOne(String profileId, String moduleId) {
-        // TODO Auto-generated method stub
+    public PermissionResponse findOne(String companyId, String profileId, String moduleId) {
         throw new UnsupportedOperationException("Unimplemented method 'findOne'");
     }
 
     @Override
-    public PermissionResponse update(String profileId, String moduleId, PermissionRequest request) {
-        // TODO Auto-generated method stub
+    public PermissionResponse update(String companyId, String profileId, String moduleId, PermissionRequest request) {
         throw new UnsupportedOperationException("Unimplemented method 'update'");
     }
 
     @Override
-    public void delete(String profileId, String moduleId) {
-        // TODO Auto-generated method stub
+    public void delete(String companyId, String profileId, String moduleId) {
         throw new UnsupportedOperationException("Unimplemented method 'delete'");
+    }
+
+    @Override
+    public List<PermissionResponse> find(String companyId, Map<String, String> params) {
+        Map<String, String> paramsNew = new HashMap<>(params);
+        paramsNew.put(Filters.KEY_COMPANY_ID, companyId);
+        return permissionRepository.findAll(filterWithParameters(paramsNew))
+                .stream().map(this::mapPermission).toList();
+    }
+
+    public Specification<PermissionEntity> filterWithParameters(Map<String, String> parameters) {
+        return new PermissionSpecification().getSpecificationByFilters(parameters);
     }
 
 }

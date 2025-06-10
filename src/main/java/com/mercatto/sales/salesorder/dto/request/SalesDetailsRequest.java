@@ -1,4 +1,4 @@
-package com.mercatto.sales.products.dto.request;
+package com.mercatto.sales.salesorder.dto.request;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
@@ -14,14 +14,11 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductRequest {
-    private String name;
-    private String code;
-    private BigDecimal price;
+public class SalesDetailsRequest {
+    private String salesId;
+    private String productId;
     private BigInteger stock;
-    private String categoryId;
-    private String imageId;
-    private String unitId;
-    private Boolean active;
+    private BigDecimal unitPrice;
+    private BigDecimal subtotal;
     private BigDecimal tax;
 }

@@ -22,9 +22,8 @@ import com.mercatto.sales.company.service.CompanyService;
 import com.mercatto.sales.company.specification.CompanySpecification;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
-import com.mercatto.sales.files.dto.FileResponse;
 import com.mercatto.sales.files.entity.FileEntity;
-import com.mercatto.sales.files.service.FileService;
+import com.mercatto.sales.files.repository.FileRepository;
 import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
 import com.mercatto.sales.taxpayer.repository.TaxpayerRepository;
 
@@ -32,15 +31,15 @@ import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class CompanyServiceImpl implements CompanyService{
-     @Autowired
+public class CompanyServiceImpl implements CompanyService {
+    @Autowired
     private CompanyRepository companyRepository;
 
     @Autowired
     private AddressService addressService;
 
     @Autowired
-    private FileService fileService;
+    private FileRepository fileRepository;
 
     @Autowired
     private TaxpayerRepository taxpayerRepository;
@@ -78,8 +77,10 @@ public class CompanyServiceImpl implements CompanyService{
 
         if (request.getImageId() != null) {
             log.info("ingreso a imagen");
-            FileResponse imageFile = fileService.findOne(request.getImageId());
-            company.setImage(mapper.map(imageFile, FileEntity.class));
+            FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                    .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                            "image not found"));
+            company.setImage(imageFile);
         }
         company.setTaxpayer(taxpayer);
         try {

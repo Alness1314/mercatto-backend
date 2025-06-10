@@ -1,7 +1,6 @@
 package com.mercatto.sales.transactions.dto.request;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -15,7 +14,7 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class SalesRequest {
-    private LocalDateTime transactionDateTime;
+    private String transactionDateTime;
     private BigDecimal amount;
     private String paymentMethod;
     private Boolean sync;

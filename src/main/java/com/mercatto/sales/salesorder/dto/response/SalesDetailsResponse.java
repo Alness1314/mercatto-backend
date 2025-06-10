@@ -1,13 +1,12 @@
-package com.mercatto.sales.products.dto.response;
+package com.mercatto.sales.salesorder.dto.response;
 
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.mercatto.sales.categories.dto.response.CategoryResponse;
-import com.mercatto.sales.files.dto.FileResponse;
-import com.mercatto.sales.unit.dto.response.UnitMeasurementResp;
+import com.mercatto.sales.products.dto.response.ProductResponse;
+import com.mercatto.sales.transactions.dto.response.SalesResponse;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -20,17 +19,14 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class ProductResponse {
+public class SalesDetailsResponse {
     private UUID id;
-    private String name;
-    private String code;
-    private BigDecimal price;
+    private SalesResponse sales;
+    private ProductResponse product;
     private BigInteger stock;
-    private CategoryResponse category;
-    private UnitMeasurementResp unit;
-    private Boolean active;
+    private BigDecimal unitPrice;
+    private BigDecimal subtotal;
     private BigDecimal tax;
-    private FileResponse image;
     private LocalDateTime createAt;
     private LocalDateTime updateAt;
     private Boolean erased;

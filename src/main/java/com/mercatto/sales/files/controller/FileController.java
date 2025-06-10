@@ -1,6 +1,7 @@
 package com.mercatto.sales.files.controller;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
@@ -32,9 +33,9 @@ public class FileController {
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
-    @GetMapping
-    public ResponseEntity<List<FileResponse>> findAll() {
-        List<FileResponse> files = fileService.find();
+    @GetMapping()
+    public ResponseEntity<List<FileResponse>> findAll(@RequestParam Map<String, String> params) {
+        List<FileResponse> files = fileService.find(params);
         return new ResponseEntity<>(files, HttpStatus.ACCEPTED);
     }
 

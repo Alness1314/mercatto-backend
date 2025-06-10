@@ -58,7 +58,7 @@ public class CompanyEntity {
     private AddressEntity address;
 
     @OneToOne
-    @JoinColumn(name = "image_id", unique = true, nullable = true)
+    @JoinColumn(name = "image_id", nullable = true)
     private FileEntity image;
 
     @ManyToOne

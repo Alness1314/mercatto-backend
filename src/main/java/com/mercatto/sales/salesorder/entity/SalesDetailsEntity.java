@@ -1,19 +1,19 @@
-package com.mercatto.sales.users.entity;
+package com.mercatto.sales.salesorder.entity;
 
+import java.math.BigDecimal;
+import java.math.BigInteger;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.mercatto.sales.company.entity.CompanyEntity;
-import com.mercatto.sales.files.entity.FileEntity;
+import com.mercatto.sales.products.entity.ProductEntity;
+import com.mercatto.sales.transactions.entity.SalesEntity;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
-import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
-import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
@@ -23,44 +23,41 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import com.mercatto.sales.profiles.entity.ProfileEntity;
-
-@Entity
-@Table(name = "users")
 @Getter
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class UserEntity {
+@Entity
+@Table(name = "sales_details")
+public class SalesDetailsEntity {
     @Id
     @GeneratedValue(generator = "uuid2")
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
     private UUID id;
 
-    @Column(nullable = false, unique = true, columnDefinition = "character varying(64)")
-    private String username;
-
-    @Column(nullable = false, columnDefinition = "character varying(256)")
-    private String password;
-
-    @Column(nullable = false, columnDefinition = "character varying(256)")
-    private String fullName;
-
-    @Column(name = "send_expiration_alert", nullable = false, columnDefinition = "boolean")
-    private Boolean sendExpirationAlert;
-
-    @ManyToOne(fetch = FetchType.EAGER)
-    @JoinColumn(name = "profile_id", nullable = false)
-    private ProfileEntity profile;
-
-    @OneToOne
-    @JoinColumn(name = "image_id", nullable = true)
-    private FileEntity image;
+    @ManyToOne
+    @JoinColumn(name = "sales_id", nullable = true)
+    private SalesEntity sales;
 
     @ManyToOne
-    @JoinColumn(name = "company_id", nullable = true)
-    private CompanyEntity company;
+    @JoinColumn(name = "product_id", nullable = true)
+    private ProductEntity product;
+
+    @Column(nullable = false, columnDefinition = "bigint")
+    private BigInteger stock;
+
+    @Column(name = "unit_price", nullable = false, columnDefinition = "numeric(18,4)")
+    private BigDecimal unitPrice;
+
+    @Column(nullable = false, columnDefinition = "numeric(18,4)")
+    private BigDecimal subtotal;
+
+    @Column(nullable = false, columnDefinition = "numeric(18,4)")
+    private BigDecimal tax;
+
+    @Column(name = "company_id", nullable = false, columnDefinition = "uuid")
+    private UUID company;
 
     @Column(name = "create_at", nullable = false, updatable = false, columnDefinition = "timestamp without time zone")
     private LocalDateTime createAt;
@@ -82,5 +79,4 @@ public class UserEntity {
     public void preUpdate() {
         setUpdateAt(LocalDateTime.now());
     }
-
 }

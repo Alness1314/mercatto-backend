@@ -23,9 +23,8 @@ import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.country.dto.request.CountryRequest;
 import com.mercatto.sales.country.dto.response.CountryResponse;
 import com.mercatto.sales.country.service.CountryService;
-import com.mercatto.sales.profiles.dto.request.ProfileRequest;
-import com.mercatto.sales.profiles.dto.response.ProfileResponse;
-import com.mercatto.sales.profiles.service.ProfileService;
+import com.mercatto.sales.profiles.entity.ProfileEntity;
+import com.mercatto.sales.profiles.repository.ProfileRepository;
 import com.mercatto.sales.states.dto.response.StateResponse;
 import com.mercatto.sales.states.service.StateService;
 import com.mercatto.sales.users.dto.request.UserRequest;
@@ -46,7 +45,7 @@ public class AppConfigServiceImpl implements AppConfigService {
     private CityService citiesService;
 
     @Autowired
-    private ProfileService profileService;
+    private ProfileRepository profileRepo;
 
     @Autowired
     private UserService userService;
@@ -130,10 +129,10 @@ public class AppConfigServiceImpl implements AppConfigService {
 
     @Override
     public ResponseServerDto createDefaultProfiles() {
-        if (profileService.find(Map.of()).isEmpty()) {
-            List<ProfileRequest> profiles = Arrays.asList(new ProfileRequest("Master"),
-                    new ProfileRequest("Administrador"), new ProfileRequest("Empleado"));
-            return profileService.multiSaving(profiles);
+        if (profileRepo.findAll().isEmpty()) {
+            ProfileEntity profileDefault = profileRepo.save(ProfileEntity.builder().name("Master").build());
+            return new ResponseServerDto("The profiles have already been created", HttpStatus.OK, true,
+                    Map.of("data", profileDefault));
         } else {
             return new ResponseServerDto("The profiles have already been created", HttpStatus.OK, true,
                     null);
@@ -142,31 +141,27 @@ public class AppConfigServiceImpl implements AppConfigService {
 
     @Override
     public ResponseServerDto createDefaultUser() {
-        UserResponse stateOpt = userService.findByUsername("master-admin@msn.com");
+        UserResponse stateOpt = userService.findByUsername("master-admin@mercatto.com");
         if (stateOpt != null) {
             return new ResponseServerDto("The user already exist",
                     HttpStatus.OK, true, null);
+        } else {
+            ProfileEntity profile = profileRepo.findByName("Master").orElse(null);
+
+            if (profile != null) {
+                UserRequest user = UserRequest.builder()
+                        .username("master-admin@msn.com")
+                        .password(password)
+                        .fullName("Soporte TI")
+                        .sendExpirationAlert(false)
+                        .profile(profile.getId().toString())
+                        .build();
+
+                userService.saveWithoutCompany(user);
+            }
+            return new ResponseServerDto("The user created",
+                    HttpStatus.OK, true, null);
         }
-
-        Optional<ProfileResponse> profile = profileService.find(Map.of("name", "Master"))
-                .stream()
-                .findFirst();
-
-        if (!profile.isEmpty()) {
-
-            UserRequest user = UserRequest.builder()
-                    .username("master-admin@msn.com")
-                    .password(password)
-                    .fullName("Soporte TI")
-                    .sendExpirationAlert(false)
-                    .profile(profile.get().getId().toString())
-                    .build();
-
-            userService.saveWithoutCompany(user);
-        }
-        return new ResponseServerDto("The user created",
-                HttpStatus.OK, true, null);
-
     }
 
     @Override

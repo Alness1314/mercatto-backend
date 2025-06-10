@@ -24,8 +24,8 @@ import com.mercatto.sales.profiles.service.ProfileService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("${api.prefix}/profiles")
-@Tag(name = "Profiles", description = ".")
+@RequestMapping("${api.prefix}/company")
+@Tag(name = "Profiles", description = ".profiles")
 public class ProfileController {
     @Autowired
     private ProfileService profileService;
@@ -33,33 +33,36 @@ public class ProfileController {
     @Autowired
     private ModulesService moduleService;
 
-    @GetMapping
-    public ResponseEntity<List<ProfileResponse>> findAll(@RequestParam Map<String, String> param) {
-        List<ProfileResponse> response = profileService.find(param);
+    @GetMapping("/{companyId}/profiles")
+    public ResponseEntity<List<ProfileResponse>> findAll(@PathVariable String companyId,
+            @RequestParam Map<String, String> param) {
+        List<ProfileResponse> response = profileService.find(companyId, param);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<ProfileResponse> findOne(@PathVariable String id) {
-        ProfileResponse response = profileService.findOne(id);
+    @GetMapping("/{companyId}/profiles/{id}")
+    public ResponseEntity<ProfileResponse> findOne(@PathVariable String companyId, @PathVariable String id) {
+        ProfileResponse response = profileService.findOne(companyId, id);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping
-    public ResponseEntity<ProfileResponse> postMethodName(@RequestBody ProfileRequest request) {
-        ProfileResponse response = profileService.save(request);
+    @PostMapping("/{companyId}/profiles")
+    public ResponseEntity<ProfileResponse> create(@PathVariable String companyId, @RequestBody ProfileRequest request) {
+        ProfileResponse response = profileService.save(companyId, request);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @GetMapping("/{profileId}/modules")
-    public ResponseEntity<List<ModuleResponse>> find(@PathVariable String profileId, @RequestParam("name") String param) {
+    @GetMapping("/profiles/{profileId}/modules")
+    public ResponseEntity<List<ModuleResponse>> find(@PathVariable String profileId,
+            @RequestParam("name") String param) {
         List<ModuleResponse> response = moduleService.getFilteredSubmodules(profileId, param);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/multi-save")
-    public ResponseEntity<ResponseServerDto> saveAll(@RequestBody List<ProfileRequest> request) {
-        ResponseServerDto response = profileService.multiSaving(request);
+    @PostMapping("/{companyId}/profiles/multi-save")
+    public ResponseEntity<ResponseServerDto> saveAll(@PathVariable String companyId,
+            @RequestBody List<ProfileRequest> request) {
+        ResponseServerDto response = profileService.multiSaving(companyId, request);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 }

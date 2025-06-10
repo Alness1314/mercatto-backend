@@ -79,6 +79,7 @@ public class SalesServiceImpl implements SalesService{
             sale = salesRepository.save(sale);
         } catch (Exception e) {
             log.error("Error to save sale {}", e.getMessage());
+            e.printStackTrace();
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
                     "Error to save sale");
         }

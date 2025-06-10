@@ -30,6 +30,8 @@ import com.mercatto.sales.profiles.repository.ProfileRepository;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
+import com.mercatto.sales.files.entity.FileEntity;
+import com.mercatto.sales.files.repository.FileRepository;
 import com.mercatto.sales.users.dto.CustomUser;
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.model.ResponseServerDto;
@@ -54,6 +56,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     private CompanyRepository companyRepository;
 
     @Autowired
+    private FileRepository fileRepository;
+
+    @Autowired
     GenericMapper mapper;
 
     @Override
@@ -63,7 +68,14 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         UserEntity newUser = mapper.map(request, UserEntity.class);
         try {
             if (request.getProfile() == null) {
-                throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT);
+                throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT, "Profile not found");
+            }
+            if (request.getImageId() != null) {
+                log.info("ingreso a imagen");
+                FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                        .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                                "image not found"));
+                newUser.setImage(imageFile);
             }
             ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile())).orElse(null);
             newUser.setProfile(profile);
@@ -89,7 +101,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     public UserResponse saveWithoutCompany(UserRequest request) {
-       UserEntity newUser = mapper.map(request, UserEntity.class);
+        UserEntity newUser = mapper.map(request, UserEntity.class);
         try {
             if (request.getProfile() == null) {
                 throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT);
@@ -172,5 +184,4 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return mapperDto(findUser);
     }
 
-    
 }

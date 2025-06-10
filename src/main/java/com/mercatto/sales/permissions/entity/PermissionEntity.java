@@ -1,5 +1,6 @@
 package com.mercatto.sales.permissions.entity;
 
+import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 
@@ -39,4 +40,8 @@ public class PermissionEntity {
 
     @Column(name = "can_delete", nullable = false, columnDefinition = "boolean")
     private boolean canDelete;
+
+    @ManyToOne
+    @JoinColumn(name = "company_id", nullable = true)
+    private CompanyEntity company;
 }

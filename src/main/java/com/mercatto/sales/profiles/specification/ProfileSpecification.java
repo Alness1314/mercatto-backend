@@ -33,6 +33,9 @@ public class ProfileSpecification implements Specification<ProfileEntity> {
                 case "erased":
                     specification = specification.and(this.filterByErased(entry.getValue()));
                     break;
+                case "company":
+                    specification = specification.and(this.filterByCompanyId(entry.getValue()));
+                    break;
                 default:
                     break;
             }
@@ -51,5 +54,9 @@ public class ProfileSpecification implements Specification<ProfileEntity> {
 
     private Specification<ProfileEntity> filterByErased(String erased) {
         return (root, query, cb) -> cb.equal(root.<Boolean>get("erased"), Boolean.parseBoolean(erased));
+    }
+
+    private Specification<ProfileEntity> filterByCompanyId(String companyId) {
+        return (root, query, cb) -> cb.equal(root.get("company").get("id"), UUID.fromString(companyId));
     }
 }

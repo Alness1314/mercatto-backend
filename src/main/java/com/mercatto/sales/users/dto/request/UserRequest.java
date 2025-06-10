@@ -16,5 +16,6 @@ public class UserRequest {
     private String password;
     private String fullName;
     private Boolean sendExpirationAlert;
+    private String imageId;
     private String profile;
 }

@@ -9,11 +9,13 @@ import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.UrlResource;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -23,10 +25,14 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.core.io.Resource;
 
+import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.files.dto.FileResponse;
 import com.mercatto.sales.files.entity.FileEntity;
 import com.mercatto.sales.files.repository.FileRepository;
 import com.mercatto.sales.files.service.FileService;
+import com.mercatto.sales.files.specification.FileSpecification;
 
 import jakarta.annotation.PostConstruct;
 
@@ -51,8 +57,9 @@ public class FileServiceImpl implements FileService {
     }
 
     @Override
-    public List<FileResponse> find() {
-        return fileRepository.findAll()
+    public List<FileResponse> find(Map<String, String> params) {
+        Specification<FileEntity> specification = filterWithParameters(params);
+        return fileRepository.findAll(specification)
                 .stream()
                 .map(this::mapperDto)
                 .toList();
@@ -60,8 +67,10 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse findOne(String id) {
-        FileEntity fileEntity = fileRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(msgNotFound, id)));
+        Map<String, String> params = Map.of(Filters.KEY_ID, id);
+        FileEntity fileEntity = fileRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(msgNotFound, id)));
         return mapperDto(fileEntity);
     }
 
@@ -145,5 +154,9 @@ public class FileServiceImpl implements FileService {
 
     private FileResponse mapperDto(FileEntity source) {
         return mapper.map(source, FileResponse.class);
+    }
+
+    public Specification<FileEntity> filterWithParameters(Map<String, String> parameters) {
+        return new FileSpecification().getSpecificationByFilters(parameters);
     }
 }
