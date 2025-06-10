@@ -108,7 +108,7 @@ public class TaxpayerServiceImpl implements TaxpayerService {
             taxpayer.setDataKey(keyString);
             // antes de guardar encriptar
 
-            taxpayer = taxpayerRepository.save(encryptData(taxpayer));
+            taxpayer = taxpayerRepository.save(taxpayer);
         } catch (Exception e) {
             log.error("Error to save taxpayer {}", e.getMessage());
             e.printStackTrace();
@@ -120,57 +120,54 @@ public class TaxpayerServiceImpl implements TaxpayerService {
     }
 
     @Override
-    //@Transactional
+    @Transactional
     public TaxpayerResponse update(String id, TaxpayerRequest request) {
         // 1. Verificar que el taxpayer exista
-        String dataKeyTax = null;
         TaxpayerEntity existingTaxpayer = taxpayerRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         "Taxpayer not found"));
-        if(existingTaxpayer.getDataKey()!=null){
-            log.info("conservamos la data key original: {}", existingTaxpayer.getDataKey());
-            dataKeyTax = existingTaxpayer.getDataKey();
-        }
-        
 
         log.info("contribuyente desde la DB encriptado: {}", existingTaxpayer);
+        // debemos desencriptar la información
+        decryptData(existingTaxpayer);
+        // nunca actulizar la key de taxpayer guardarla en temporal
+        String keyExistTaxpayer = existingTaxpayer.getDataKey();
+
+        log.info("contribuyente desde la DB desencriptado: {}", existingTaxpayer);
 
         try {
-            TaxpayerEntity existngTaxpayerDecrypt = decryptData(existingTaxpayer);
-            log.info("contribuyente desde la DB desencriptado: {}", existngTaxpayerDecrypt);
             // 2. Actualizar datos básicos del taxpayer
-            mapperUpdate.map(request, existngTaxpayerDecrypt);
+            mapperUpdate.map(request, existingTaxpayer);
 
-            // 3. Actualizar dirección (si se proporciona)
+            // 3. Manejar Legal Representative primero (no requiere operaciones de BD)
+            handleLegalRepresentative(request, existingTaxpayer);
+
+            // 5. Encriptar el taxpayer antes de cualquier operación de BD
+
+            // 6. Guardar el taxpayer encriptado primero
+            existingTaxpayer = taxpayerRepository.save(existingTaxpayer);
+
+            // 7. Actualizar dirección (si se proporciona) - después de guardar el taxpayer
             if (request.getAddress() != null) {
-                UUID addressId = existngTaxpayerDecrypt.getAddress() != null
-                        ? existngTaxpayerDecrypt.getAddress().getId()
+                String addressId = existingTaxpayer.getAddress() != null
+                        ? existingTaxpayer.getAddress().getId().toString()
                         : null;
 
-                AddressResponse addressResponse = addressService.update(addressId.toString(), request.getAddress());
+                // La actualización de la dirección se maneja por separado
+                AddressResponse addressResponse = addressService.update(addressId, request.getAddress());
                 AddressEntity addressEntity = addressRepository.findById(addressResponse.getId())
                         .orElseThrow(() -> new RuntimeException("Address not found after update"));
-                existngTaxpayerDecrypt.setAddress(addressEntity);
+
+                // Actualizar la referencia en el taxpayer
+                existingTaxpayer.setAddress(addressEntity);
+                existingTaxpayer.setDataKey(keyExistTaxpayer);
+                taxpayerRepository.save(existingTaxpayer); // Guardar solo la referencia
             }
 
-            // 4. Manejar Legal Representative
-            handleLegalRepresentative(request, existngTaxpayerDecrypt);
+            log.info("contribuyente editado encriptado guardado: {}", existingTaxpayer);
 
-            // 5. Asegurar data_key del taxpayer
-            if (existngTaxpayerDecrypt.getDataKey() == null || existngTaxpayerDecrypt.getDataKey().isEmpty()) {
-                SecretKey key = TextEncrypterUtil.generateKey();
-                existngTaxpayerDecrypt.setDataKey(TextEncrypterUtil.keyToString(key));
-            }
-
-            // 6. Guardar cambios
-            log.info("contribuyente editado desencriptado antes de guardar: {}", existngTaxpayerDecrypt);
-            existingTaxpayer = encryptData(existngTaxpayerDecrypt);
-            log.info("contribuyente editado encriptado antes de guardar: {}", existingTaxpayer);
-            existingTaxpayer.setDataKey(dataKeyTax);
-            TaxpayerEntity existngTaxpayerEncrypt = taxpayerRepository.save(existingTaxpayer);
-
-            log.info("contribuyente editado encriptado guardado: {}", existngTaxpayerEncrypt);
-            return mapperUpdate.map(decryptData(existngTaxpayerEncrypt), TaxpayerResponse.class);
+            // Desencriptar para la respuesta
+            return mapperUpdate.map(existingTaxpayer, TaxpayerResponse.class);
 
         } catch (Exception e) {
             log.error("Error updating taxpayer with id {}: {}", id, e.getMessage(), e);
@@ -179,7 +176,8 @@ public class TaxpayerServiceImpl implements TaxpayerService {
         }
     }
 
-    private void handleLegalRepresentative(TaxpayerRequest request, TaxpayerEntity taxpayer) {
+    private void handleLegalRepresentative(TaxpayerRequest request,
+            TaxpayerEntity taxpayer) {
         if (!"Moral".equalsIgnoreCase(request.getTypePerson()) ||
                 request.getLegalRepresentative() == null) {
             taxpayer.setLegalRepresentative(null);
@@ -190,6 +188,7 @@ public class TaxpayerServiceImpl implements TaxpayerService {
 
         // Caso 1: Nuevo representante legal
         if (legalRep == null) {
+            log.info("Deberia entrar aqui por que no lleva un rep legal por defaul sino que se actualizara");
             legalRep = new LegalRepresentativeEntity();
             mapperUpdate.map(request.getLegalRepresentative(), legalRep);
 
@@ -212,69 +211,50 @@ public class TaxpayerServiceImpl implements TaxpayerService {
 
     @Override
     public ResponseServerDto delete(String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+         TaxpayerEntity existingTaxpayer = taxpayerRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Taxpayer not found"));
+
+        log.info("contribuyente desde la DB encriptado: {}", existingTaxpayer);
+        // debemos desencriptar la información
+        decryptData(existingTaxpayer);
+        try {
+            if(existingTaxpayer.getLegalRepresentative()!=null){
+                existingTaxpayer.getLegalRepresentative().setErased(true);
+            }
+            existingTaxpayer.setErased(true);
+            taxpayerRepository.save(existingTaxpayer);
+            return new ResponseServerDto("Taxpayer deleted", HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    "Error deleting taxpayer: " + e.getMessage());
+        }
     }
 
     private TaxpayerResponse mapperDto(TaxpayerEntity source) {
-        return mapper.map(decryptData(source), TaxpayerResponse.class);
+        decryptData(source);
+        return mapper.map(source, TaxpayerResponse.class);
     }
 
     private Specification<TaxpayerEntity> filterWithParameters(Map<String, String> parameters) {
         return new TaxpayerSpecification().getSpecificationByFilters(parameters);
     }
 
-    private TaxpayerEntity encryptData(TaxpayerEntity source) {
-        TaxpayerEntity encrypted = new TaxpayerEntity();
-        // Copiar todos los campos básicos
-        encrypted.setId(source.getId());
-        encrypted.setTypePerson(source.getTypePerson());
-        encrypted.setDataKey(source.getDataKey());
-        encrypted.setCreateAt(source.getCreateAt());
-        encrypted.setUpdateAt(source.getUpdateAt());
-        encrypted.setErased(source.getErased());
-        encrypted.setAddress(source.getAddress());
+    private void decryptData(TaxpayerEntity source) {
+        var legalRep = source.getLegalRepresentative();
 
-        // Encriptar campos sensibles
-        encrypted.setCorporateReasonOrNaturalPerson(
-                TextEncrypterUtil.encrypt(source.getCorporateReasonOrNaturalPerson(), source.getDataKey()));
-        encrypted.setRfc(TextEncrypterUtil.encrypt(source.getRfc(), source.getDataKey()));
-
-        // Manejar LegalRepresentative
-        if (source.getLegalRepresentative() != null) {
-            LegalRepresentativeEntity lr = new LegalRepresentativeEntity();
-            lr.setId(source.getLegalRepresentative().getId());
-            lr.setDataKey(source.getLegalRepresentative().getDataKey());
-            lr.setErased(source.getLegalRepresentative().getErased());
-            lr.setTaxpayer(encrypted);
-
-            lr.setFullName(TextEncrypterUtil.encrypt(
-                    source.getLegalRepresentative().getFullName(),
-                    source.getLegalRepresentative().getDataKey()));
-            lr.setRfc(TextEncrypterUtil.encrypt(
-                    source.getLegalRepresentative().getRfc(),
-                    source.getLegalRepresentative().getDataKey()));
-
-            encrypted.setLegalRepresentative(lr);
+        if (legalRep != null && legalRep.getDataKey() != null) {
+            String key = legalRep.getDataKey();
+            legalRep.setRfc(TextEncrypterUtil.decrypt(legalRep.getRfc(), key));
+            legalRep.setFullName(TextEncrypterUtil.decrypt(legalRep.getFullName(), key));
         }
 
-        return encrypted;
-    }
-
-    private TaxpayerEntity decryptData(TaxpayerEntity source) {
-        String encCorporate = TextEncrypterUtil.decrypt(source.getCorporateReasonOrNaturalPerson(),
-                source.getDataKey());
-        String rfcCorporate = TextEncrypterUtil.decrypt(source.getRfc(), source.getDataKey());
-        source.setCorporateReasonOrNaturalPerson(encCorporate);
-        source.setRfc(rfcCorporate);
-        if (source.getLegalRepresentative() != null) {
-            String legalRepRfc = TextEncrypterUtil.decrypt(source.getLegalRepresentative().getRfc(),
-                    source.getLegalRepresentative().getDataKey());
-            String legalRepName = TextEncrypterUtil.decrypt(source.getLegalRepresentative().getFullName(),
-                    source.getLegalRepresentative().getDataKey());
-            source.getLegalRepresentative().setFullName(legalRepName);
-            source.getLegalRepresentative().setRfc(legalRepRfc);
+        String dataKey = source.getDataKey();
+        if (dataKey != null) {
+            source.setCorporateReasonOrNaturalPerson(TextEncrypterUtil.decrypt(
+                    source.getCorporateReasonOrNaturalPerson(), dataKey));
+            source.setRfc(TextEncrypterUtil.decrypt(source.getRfc(), dataKey));
         }
-
-        return source;
     }
+
 }

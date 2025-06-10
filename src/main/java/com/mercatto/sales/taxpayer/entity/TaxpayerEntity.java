@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.mercatto.sales.address.entity.AddressEntity;
 import com.mercatto.sales.company.entity.CompanyEntity;
+import com.mercatto.sales.utils.TextEncrypterUtil;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -35,7 +36,7 @@ import lombok.extern.slf4j.Slf4j;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class TaxpayerEntity{
+public class TaxpayerEntity {
     @Id
     @GeneratedValue(generator = "uuid2")
     @Column(name = "id", updatable = false, nullable = false, columnDefinition = "uuid")
@@ -49,7 +50,7 @@ public class TaxpayerEntity{
 
     @Column(name = "type_person", nullable = false, columnDefinition = "character varying(64)")
     private String typePerson;
-    
+
     @OneToOne(mappedBy = "taxpayer", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private LegalRepresentativeEntity legalRepresentative;
 
@@ -85,11 +86,23 @@ public class TaxpayerEntity{
         setErased(false);
         setCreateAt(LocalDateTime.now());
         setUpdateAt(LocalDateTime.now());
+        encryptData(this);
     }
 
     @PreUpdate
     public void preUpdate() {
         setUpdateAt(LocalDateTime.now());
+        encryptData(this);
+    }
+
+    private void encryptData(TaxpayerEntity source) {
+        if (source.getDataKey() != null) {
+            String encCorporate = TextEncrypterUtil.encrypt(source.getCorporateReasonOrNaturalPerson(),
+                    source.getDataKey());
+            String rfcCorporate = TextEncrypterUtil.encrypt(source.getRfc(), source.getDataKey());
+            source.setCorporateReasonOrNaturalPerson(encCorporate);
+            source.setRfc(rfcCorporate);
+        }
     }
 
 }

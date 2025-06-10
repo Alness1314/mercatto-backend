@@ -26,6 +26,7 @@ import com.mercatto.sales.files.entity.FileEntity;
 import com.mercatto.sales.files.repository.FileRepository;
 import com.mercatto.sales.taxpayer.entity.TaxpayerEntity;
 import com.mercatto.sales.taxpayer.repository.TaxpayerRepository;
+import com.mercatto.sales.utils.TextEncrypterUtil;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -108,6 +109,24 @@ public class CompanyServiceImpl implements CompanyService {
     }
 
     private CompanyResponse mapperDto(CompanyEntity source) {
+        decryptData(source.getTaxpayer());
         return mapper.map(source, CompanyResponse.class);
+    }
+
+    private void decryptData(TaxpayerEntity source) {
+        var legalRep = source.getLegalRepresentative();
+
+        if (legalRep != null && legalRep.getDataKey() != null) {
+            String key = legalRep.getDataKey();
+            legalRep.setRfc(TextEncrypterUtil.decrypt(legalRep.getRfc(), key));
+            legalRep.setFullName(TextEncrypterUtil.decrypt(legalRep.getFullName(), key));
+        }
+
+        String dataKey = source.getDataKey();
+        if (dataKey != null) {
+            source.setCorporateReasonOrNaturalPerson(TextEncrypterUtil.decrypt(
+                    source.getCorporateReasonOrNaturalPerson(), dataKey));
+            source.setRfc(TextEncrypterUtil.decrypt(source.getRfc(), dataKey));
+        }
     }
 }

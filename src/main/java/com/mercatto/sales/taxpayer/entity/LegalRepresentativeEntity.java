@@ -54,8 +54,25 @@ public class LegalRepresentativeEntity {
                 + dataKey + ", erased=" + erased + "]";
     }
 
+    private void encryptData(LegalRepresentativeEntity source) {
+        if (source.getDataKey() != null) {
+            String legalRepRfc = TextEncrypterUtil.encrypt(source.getRfc(),
+                    source.getDataKey());
+            String legalRepName = TextEncrypterUtil.encrypt(source.getFullName(),
+                    source.getDataKey());
+            source.setFullName(legalRepName);
+            source.setRfc(legalRepRfc);
+        }
+    }
+
     @PrePersist
     public void prePersist() {
         setErased(false);
+        encryptData(this);
+    }
+
+    @PreUpdate
+    public void preUpdate(){
+        encryptData(this);
     }
 }
