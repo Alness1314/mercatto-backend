@@ -150,7 +150,7 @@ public class AppConfigServiceImpl implements AppConfigService {
 
             if (profile != null) {
                 UserRequest user = UserRequest.builder()
-                        .username("master-admin@msn.com")
+                        .username("master-admin@mercatto.com")
                         .password(password)
                         .fullName("Soporte TI")
                         .sendExpirationAlert(false)

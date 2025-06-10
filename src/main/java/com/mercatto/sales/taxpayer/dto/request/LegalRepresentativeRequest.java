@@ -1,5 +1,8 @@
 package com.mercatto.sales.taxpayer.dto.request;
 
+import com.mercatto.sales.annotations.build.IsRFC;
+
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -12,6 +15,11 @@ import lombok.Setter;
 @AllArgsConstructor
 @Builder
 public class LegalRepresentativeRequest {
+    
+    @NotNull(message = "Debe contener el nombre completo")
     private String fullName;
+
+    @IsRFC
+    @NotNull(message = "El RFC no puede estar vacío")
     private String rfc;
 }

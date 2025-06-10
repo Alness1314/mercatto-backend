@@ -56,7 +56,7 @@ public class GenericMapper {
     // Método para registrar mapeos específicos
     private void registerMappings() {
         // Mapeo para desencriptar campos en TaxpayerResponse
-        TypeMap<TaxpayerEntity, TaxpayerResponse> taxpayerMap = mapper.createTypeMap(TaxpayerEntity.class,
+        /*TypeMap<TaxpayerEntity, TaxpayerResponse> taxpayerMap = mapper.createTypeMap(TaxpayerEntity.class,
                 TaxpayerResponse.class);
 
         taxpayerMap.addMappings(mpa -> {
@@ -89,8 +89,9 @@ public class GenericMapper {
                 return key != null ? TextEncrypterUtil.decrypt(value, key) : value;
             }).map(TaxpayerEntity::getLegalRepresentative,
                     (dest, value) -> dest.getLegalRepresentative().setFullName((String) value));
-        });
+        });*/
 
+        // Mapeo de fecha en SalesEntity
         Converter<String, LocalDateTime> localDateTimeConverter = createConverter(DateTimeUtils::parseToLocalDateTime);
         mapper.createTypeMap(SalesRequest.class, SalesEntity.class)
                 .addMappings(m -> m.using(localDateTimeConverter)

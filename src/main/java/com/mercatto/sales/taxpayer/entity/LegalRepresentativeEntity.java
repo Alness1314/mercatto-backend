@@ -11,6 +11,7 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -47,13 +48,14 @@ public class LegalRepresentativeEntity {
     @JoinColumn(name = "taxpayer_id", nullable = false)
     private TaxpayerEntity taxpayer;
 
+    @Override
+    public String toString() {
+        return "LegalRepresentativeEntity [id=" + id + ", fullName=" + fullName + ", rfc=" + rfc + ", dataKey="
+                + dataKey + ", erased=" + erased + "]";
+    }
+
     @PrePersist
     public void prePersist() {
         setErased(false);
-
-        if (this.dataKey != null) {
-            this.rfc = TextEncrypterUtil.encrypt(rfc, dataKey);
-            this.fullName = TextEncrypterUtil.encrypt(fullName, dataKey);
-        }
     }
 }

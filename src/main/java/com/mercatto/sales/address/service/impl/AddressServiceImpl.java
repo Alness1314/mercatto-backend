@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -26,6 +28,7 @@ import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.states.entity.StateEntity;
 import com.mercatto.sales.states.repository.StateRepository;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -45,6 +48,16 @@ public class AddressServiceImpl implements AddressService {
 
     @Autowired
     private GenericMapper mapper;
+
+    ModelMapper mapperUpdate = new ModelMapper();
+
+    @PostConstruct
+    private void init() {
+        mapperUpdate.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+    }
 
     @Override
     public List<AddressResponse> find(Map<String, String> parameters) {
@@ -91,7 +104,42 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponse update(String id, AddressRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+        // Verificar que la dirección exista
+        AddressEntity existingAddress = addressRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Address not found"));
+
+        // Validar y obtener las entidades relacionadas
+        CountryEntity country = countryRepository.findById(UUID.fromString(request.getCountryId()))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Country not found"));
+
+        StateEntity state = stateRepository.findById(UUID.fromString(request.getStateId()))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "State not found"));
+
+        CityEntity city = cityRepository.findById(UUID.fromString(request.getCityId()))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "City not found"));
+
+        try {
+            // Actualizar los campos de la entidad existente
+            mapperUpdate.map(request, existingAddress);
+
+            // Establecer las relaciones
+            existingAddress.setCountry(country);
+            existingAddress.setState(state);
+            existingAddress.setCity(city);
+
+            // Guardar los cambios
+            AddressEntity updatedAddress = addressRepository.save(existingAddress);
+
+            return mapperDto(updatedAddress);
+        } catch (Exception e) {
+            log.error("Error updating address with id {}: {}", id, e.getMessage());
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error updating address");
+        }
     }
 
     @Override

@@ -6,7 +6,6 @@ import java.util.UUID;
 
 import com.mercatto.sales.address.entity.AddressEntity;
 import com.mercatto.sales.company.entity.CompanyEntity;
-import com.mercatto.sales.utils.TextEncrypterUtil;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -73,15 +72,19 @@ public class TaxpayerEntity{
     @Column(nullable = false, columnDefinition = "boolean")
     private Boolean erased;
 
+    @Override
+    public String toString() {
+        return "TaxpayerEntity [id=" + id + ", corporateReasonOrNaturalPerson=" + corporateReasonOrNaturalPerson
+                + ", rfc=" + rfc + ", typePerson=" + typePerson + ", legalRepresentative=" + legalRepresentative
+                + ", address=" + address + ", dataKey=" + dataKey + ", createAt=" + createAt + ", updateAt=" + updateAt
+                + ", erased=" + erased + "]";
+    }
+
     @PrePersist
     public void prePersist() {
         setErased(false);
         setCreateAt(LocalDateTime.now());
         setUpdateAt(LocalDateTime.now());
-        if(this.dataKey != null) {
-            this.rfc = TextEncrypterUtil.encrypt(rfc, dataKey);
-            this.corporateReasonOrNaturalPerson = TextEncrypterUtil.encrypt(corporateReasonOrNaturalPerson, dataKey);
-        }
     }
 
     @PreUpdate
