@@ -60,28 +60,6 @@ public class CountryServiceImpl implements CountryService {
         return mapperDto(newCountry);
     }
 
-    @Override
-    public CountryResponse update(String id, CountryRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
-    }
-
-    @Override
-    public ResponseServerDto delete(String id) {
-        CountryEntity country = countryRepository.findOne(filterWithParameters(Map.of("id", id)))
-                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Country not found"));
-        try {
-            country.setErased(true);
-            countryRepository.save(country);
-            return new ResponseServerDto("The country has been removed.", HttpStatus.ACCEPTED, true, null);
-        } catch (Exception e) {
-            log.error("Error to delete country ", e);
-            return new ResponseServerDto("An error occurred while deleting the country", HttpStatus.METHOD_NOT_ALLOWED,
-                    false,
-                    null);
-        }
-    }
-
     private CountryResponse mapperDto(CountryEntity source) {
         return mapper.map(source, CountryResponse.class);
     }

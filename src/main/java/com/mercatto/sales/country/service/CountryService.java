@@ -12,6 +12,4 @@ public interface CountryService {
     public CountryResponse findOne(String id);
     public CountryResponse save(CountryRequest request);
     public ResponseServerDto multiSaving(List<CountryRequest> countryList);
-    public CountryResponse update(String id, CountryRequest request);
-    public ResponseServerDto delete(String id);
 }

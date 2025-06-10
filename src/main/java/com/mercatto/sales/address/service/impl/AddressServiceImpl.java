@@ -20,6 +20,7 @@ import com.mercatto.sales.address.specification.AddressSpecification;
 import com.mercatto.sales.cities.entity.CityEntity;
 import com.mercatto.sales.cities.repository.CityRepository;
 import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.country.entity.CountryEntity;
@@ -71,7 +72,7 @@ public class AddressServiceImpl implements AddressService {
     public AddressResponse findOne(String id) {
         AddressEntity address = addressRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Address not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(address);
     }
 
@@ -79,15 +80,15 @@ public class AddressServiceImpl implements AddressService {
     public AddressResponse save(AddressRequest request) {
         CountryEntity country = countryRepository.findById(UUID.fromString(request.getCountryId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Country not found"));
+                        String.format(Messages.NOT_FOUND, request.getCountryId())));
 
         StateEntity state = stateRepository.findById(UUID.fromString(request.getStateId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "State not found"));
+                        String.format(Messages.NOT_FOUND, request.getStateId())));
 
         CityEntity city = cityRepository.findById(UUID.fromString(request.getCityId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "City not found"));
+                        String.format(Messages.NOT_FOUND, request.getCityId())));
         AddressEntity address = mapper.map(request, AddressEntity.class);
         try {
             address.setCountry(country);
@@ -107,7 +108,7 @@ public class AddressServiceImpl implements AddressService {
         // Verificar que la dirección exista
         AddressEntity existingAddress = addressRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Address not found"));
+                        String.format(Messages.NOT_FOUND, request.getCountryId())));
 
         // Validar y obtener las entidades relacionadas
         CountryEntity country = countryRepository.findById(UUID.fromString(request.getCountryId()))
@@ -144,7 +145,17 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public ResponseServerDto delete(String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+        AddressEntity existingAddress = addressRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
+        try {
+            existingAddress.setErased(true);
+            addressRepository.save(existingAddress);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
 
     private AddressResponse mapperDto(AddressEntity source) {
