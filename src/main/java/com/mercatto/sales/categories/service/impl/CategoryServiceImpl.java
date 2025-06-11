@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -19,12 +21,14 @@ import com.mercatto.sales.categories.service.CategoryService;
 import com.mercatto.sales.categories.specification.CategorySpecification;
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -38,6 +42,16 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private GenericMapper mapper;
+
+    ModelMapper mapperUpdate = new ModelMapper();
+
+    @PostConstruct
+    private void init() {
+        mapperUpdate.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+    }
 
     @Override
     public List<CategoryResponse> find(String companyId, Map<String, String> params) {
@@ -55,7 +69,7 @@ public class CategoryServiceImpl implements CategoryService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         CategoryEntity category = categoryRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Category not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(category);
     }
 
@@ -77,12 +91,46 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponse update(String companyId, String id, CategoryRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+        // Verificar que la compañía existe
+        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        // Buscar la categoría existente que pertenezca a esta compañía
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        CategoryEntity existingCategory = categoryRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
+
+        try {
+            // Actualizar los campos de la categoría con los nuevos valores
+            mapperUpdate.map(request, existingCategory);
+            existingCategory.setCompany(company); // Asegurar que mantiene la misma compañía
+
+            // Guardar los cambios
+            CategoryEntity updatedCategory = categoryRepository.save(existingCategory);
+            return mapperDto(updatedCategory);
+        } catch (Exception e) {
+            log.error("Error updating category with id: {}", id, e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error updating category");
+        }
     }
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+        // Buscar la categoría existente que pertenezca a esta compañía
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        CategoryEntity existingCategory = categoryRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
+        try {
+            existingCategory.setErased(true);
+            categoryRepository.save(existingCategory);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
 
     private CategoryResponse mapperDto(CategoryEntity source) {

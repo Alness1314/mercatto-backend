@@ -27,6 +27,8 @@ import org.springframework.core.io.Resource;
 
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
+import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.files.dto.FileResponse;
 import com.mercatto.sales.files.entity.FileEntity;
@@ -35,8 +37,10 @@ import com.mercatto.sales.files.service.FileService;
 import com.mercatto.sales.files.specification.FileSpecification;
 
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class FileServiceImpl implements FileService {
     @Autowired
     private FileRepository fileRepository;
@@ -158,5 +162,26 @@ public class FileServiceImpl implements FileService {
 
     public Specification<FileEntity> filterWithParameters(Map<String, String> parameters) {
         return new FileSpecification().getSpecificationByFilters(parameters);
+    }
+
+    @Override
+    public ResponseServerDto deleteFile(String id) {
+        // Buscar la entidad del archivo en la base de datos
+        FileEntity fileEntity = fileRepository.findById(UUID.fromString(id))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found with id: " + id));
+
+        try {
+            // Eliminar el archivo físico del sistema
+            Path filePath = Paths.get(uploadPath).resolve(fileEntity.getName());
+            Files.deleteIfExists(filePath);
+
+            // Eliminar la entidad de la base de datos (borrado físico)
+            fileRepository.delete(fileEntity);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (IOException ex) {
+            log.error("Error deleting file with id: {}", id, ex);
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Could not delete file " + fileEntity.getName(), ex);
+        }
     }
 }

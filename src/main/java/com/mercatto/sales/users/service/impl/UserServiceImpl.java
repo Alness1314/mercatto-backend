@@ -268,4 +268,18 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         return mapperDto(findUser);
     }
 
+    @Override
+    public UserResponse findOneWithoutCompany(String id) {
+        Map<String, String> params = Map.of(Filters.KEY_ID, id);
+        UserEntity findUser = userRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
+        return mapperDto(findUser);
+    }
+
+    @Override
+    public List<UserResponse> findWithoutCompany(Map<String, String> params) {
+        return userRepository.findAll(filterWithParameters(params))
+                .stream().map(this::mapperDto).toList();
+    }
+
 }

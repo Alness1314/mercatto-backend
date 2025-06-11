@@ -1,5 +1,8 @@
 package com.mercatto.sales.users.controller;
 
+import java.util.List;
+import java.util.Map;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -8,6 +11,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import com.mercatto.sales.users.dto.request.UserRequest;
@@ -29,15 +33,15 @@ public class UserAdminController {
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    /*@GetMapping("/users/admin/{id}")
+    @GetMapping("/admin/{id}")
     public ResponseEntity<UserResponse> findOne(@PathVariable String id) {
-        UserResponse response = userService.findOne(id);
+        UserResponse response = userService.findOneWithoutCompany(id);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }
 
-    @PostMapping("/users/admin")
-    public ResponseEntity<UserResponse> find(@RequestBody UserRequest request) {
-        UserResponse response = userService.save(request);
+    @GetMapping("/admin")
+    public ResponseEntity<List<UserResponse>> find(@RequestParam Map<String, String> params) {
+        List<UserResponse> response = userService.findWithoutCompany(params);
         return new ResponseEntity<>(response, HttpStatus.OK);
-    }*/
+    }
 }

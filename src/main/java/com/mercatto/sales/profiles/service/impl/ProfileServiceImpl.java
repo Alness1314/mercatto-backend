@@ -6,17 +6,22 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
 import com.mercatto.sales.config.GenericMapper;
+import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.profiles.dto.request.ProfileRequest;
 import com.mercatto.sales.profiles.dto.response.ProfileResponse;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
@@ -24,6 +29,7 @@ import com.mercatto.sales.profiles.repository.ProfileRepository;
 import com.mercatto.sales.profiles.service.ProfileService;
 import com.mercatto.sales.profiles.specification.ProfileSpecification;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -37,6 +43,16 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Autowired
     private GenericMapper mapper;
+
+    ModelMapper mapperUpdate = new ModelMapper();
+
+    @PostConstruct
+    private void init() {
+        mapperUpdate.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+    }
 
     @Override
     public ProfileResponse save(String companyId, ProfileRequest request) {
@@ -58,7 +74,8 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse findOne(String companyId, String id) {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         ProfileEntity profile = profileRepository.findOne(filterWithParameters(params))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, ""));
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(Messages.NOT_FOUND, id)));
         return mapperDto(profile);
     }
 
@@ -72,12 +89,44 @@ public class ProfileServiceImpl implements ProfileService {
 
     @Override
     public ProfileResponse update(String companyId, String id, ProfileRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+        // Verificar que la compañía existe
+        companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        // Buscar el perfil existente
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        ProfileEntity existingProfile = profileRepository.findOne(filterWithParameters(params))
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(Messages.NOT_FOUND, id)));
+
+        try {
+            // Actualizar los campos del perfil con los nuevos valores
+            mapperUpdate.map(request, existingProfile);
+
+            // Guardar los cambios
+            ProfileEntity updatedProfile = profileRepository.save(existingProfile);
+            return mapperDto(updatedProfile);
+        } catch (Exception e) {
+            log.error("Error updating profile with id: " + id, e);
+            throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED, "Could not update profile");
+        }
     }
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+        // Buscar el perfil existente
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        ProfileEntity existingProfile = profileRepository.findOne(filterWithParameters(params))
+                .orElseThrow(
+                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(Messages.NOT_FOUND, id)));
+        try {
+            existingProfile.setErased(true);
+            profileRepository.save(existingProfile);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
 
     private ProfileResponse mapperDto(ProfileEntity source) {

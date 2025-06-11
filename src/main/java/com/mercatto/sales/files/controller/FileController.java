@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.files.dto.FileResponse;
 import com.mercatto.sales.files.service.FileService;
 
@@ -48,4 +50,11 @@ public class FileController {
     public ResponseEntity<Resource> getFile(@PathVariable String id) {
         return fileService.loadFileAsResource(id);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ResponseServerDto> delete(@PathVariable String id) {
+        ResponseServerDto response = fileService.deleteFile(id);
+        return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
+    }
+
 }

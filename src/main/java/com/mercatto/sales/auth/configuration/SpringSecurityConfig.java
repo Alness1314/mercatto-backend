@@ -6,6 +6,7 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.Customizer;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mercatto.sales.auth.filters.JwtAuthenticationFilter;
 import com.mercatto.sales.auth.filters.JwtValidationFilter;
 import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.enums.DefaultProfiles;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -50,6 +52,10 @@ public class SpringSecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http.authorizeHttpRequests(
                 request -> request.requestMatchers(WHITE_LIST_URLS).permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/admin/**")
+                        .hasAnyAuthority(DefaultProfiles.SADMIN.getName())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/admin/**")
+                        .hasAnyAuthority(DefaultProfiles.SADMIN.getName())
                         .anyRequest().authenticated())
                 .addFilterBefore(
                         new JwtAuthenticationFilter(authenticationConfiguration.getAuthenticationManager(),
