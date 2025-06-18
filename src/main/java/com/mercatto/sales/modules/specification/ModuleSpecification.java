@@ -18,6 +18,7 @@ import jakarta.persistence.criteria.Predicate;
 import jakarta.persistence.criteria.Root;
 
 public class ModuleSpecification implements Specification<ModulesEntity> {
+    private String permissions = "permissions";
 
     @SuppressWarnings("null")
     @Override
@@ -72,14 +73,14 @@ public class ModuleSpecification implements Specification<ModulesEntity> {
 
     private Specification<ModulesEntity> filterByProfileId(String profileId) {
         return (root, query, cb) -> {
-            Join<ModulesEntity, PermissionEntity> join = root.join("permissions", JoinType.INNER);
+            Join<ModulesEntity, PermissionEntity> join = root.join(permissions, JoinType.INNER);
             return cb.equal(join.get("profile").get("id"), UUID.fromString(profileId));
         };
     }
 
     private Specification<ModulesEntity> filterByPermission(String permissionField, String value) {
         return (root, query, cb) -> {
-            Join<ModulesEntity, PermissionEntity> join = root.join("permissions", JoinType.INNER);
+            Join<ModulesEntity, PermissionEntity> join = root.join(permissions, JoinType.INNER);
             return cb.equal(join.get(permissionField), Boolean.parseBoolean(value));
         };
     }

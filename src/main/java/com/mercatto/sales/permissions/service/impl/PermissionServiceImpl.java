@@ -11,13 +11,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
+import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
+import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
+import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.modules.dto.response.ModuleDto;
 import com.mercatto.sales.modules.entity.ModulesEntity;
 import com.mercatto.sales.modules.repository.ModulesRepository;
 import com.mercatto.sales.permissions.dto.request.PermissionRequest;
+import com.mercatto.sales.permissions.dto.request.PermissionUpdateReq;
 import com.mercatto.sales.permissions.dto.response.PermissionResponse;
 import com.mercatto.sales.permissions.entity.PermissionEntity;
 import com.mercatto.sales.permissions.entity.PermissionId;
@@ -93,17 +98,60 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public PermissionResponse findOne(String companyId, String profileId, String moduleId) {
-        throw new UnsupportedOperationException("Unimplemented method 'findOne'");
+        Map<String, String> params = Map.of("profle", profileId, "module", moduleId, Filters.KEY_COMPANY_ID, companyId);
+        PermissionEntity permissionEntity = permissionRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
+        return mapPermission(permissionEntity);
     }
 
     @Override
-    public PermissionResponse update(String companyId, String profileId, String moduleId, PermissionRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+    public PermissionResponse update(String companyId, String profileId, String moduleId, PermissionUpdateReq request) {
+        // Verificar que la compañía existe
+        companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        // Crear la clave compuesta para buscar el permiso existente
+        PermissionId id = new PermissionId();
+        id.setProfileId(UUID.fromString(profileId));
+        id.setModuleId(UUID.fromString(moduleId));
+
+        // Obtener el permiso existente
+        PermissionEntity existingPermission = permissionRepository.findById(id)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Permission not found for profile: " + profileId +
+                                " and module: " + moduleId));
+
+        // Verificar que el permiso pertenece a la compañía especificada
+        if (!existingPermission.getCompany().getId().equals(UUID.fromString(companyId))) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Permission does not belong to the specified company");
+        }
+
+        // Actualizar los flags de permisos (no se actualizan las relaciones que son
+        // parte de la PK)
+        existingPermission.setCanCreate(request.isCanCreate());
+        existingPermission.setCanRead(request.isCanRead());
+        existingPermission.setCanUpdate(request.isCanUpdate());
+        existingPermission.setCanDelete(request.isCanDelete());
+
+        // Guardar los cambios
+        PermissionEntity updatedPermission = permissionRepository.save(existingPermission);
+
+        return mapPermission(updatedPermission);
     }
 
     @Override
-    public void delete(String companyId, String profileId, String moduleId) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+    public ResponseServerDto delete(String companyId, String profileId, String moduleId) {
+        Map<String, String> params = Map.of("profle", profileId, "module", moduleId, Filters.KEY_COMPANY_ID, companyId);
+        PermissionEntity permissionEntity = permissionRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
+        try {
+            permissionRepository.delete(permissionEntity);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, moduleId), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
 
     @Override

@@ -8,10 +8,14 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
+import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
+import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.modules.dto.request.ModuleRequest;
 import com.mercatto.sales.modules.dto.response.ModuleResponse;
 import com.mercatto.sales.modules.entity.ModulesEntity;
@@ -82,8 +86,8 @@ public class ModulesServiceImpl implements ModulesService {
     }
 
     @Override
-    public List<ModuleResponse> findAll() {
-        return modulesRepository.findAll()
+    public List<ModuleResponse> findAll(Map<String, String> params) {
+        return modulesRepository.findAll(filterWithParameters(params))
                 .stream()
                 .map(this::mapModule)
                 .toList();
@@ -136,5 +140,49 @@ public class ModulesServiceImpl implements ModulesService {
         module.setErased(source.getErased());
 
         return module;
+    }
+
+    @Override
+    public ModuleResponse update(String id, ModuleRequest request) {
+        // Verificar que el módulo a actualizar existe
+        UUID moduleId = UUID.fromString(id); // Asumo que ModuleRequest tiene un campo id
+        ModulesEntity existingModule = modulesRepository.findById(moduleId)
+                .orElseThrow(() -> new EntityNotFoundException("Module not found with id: " + id));
+
+        // Actualizar los campos del módulo existente
+        existingModule.setName(request.getName());
+        existingModule.setRoute(request.getRoute());
+        existingModule.setIconName(request.getIconName());
+
+        // Manejar la relación padre (similar al save)
+        if (request.getParentId() != null) {
+            ModulesEntity parent = modulesRepository.findById(UUID.fromString(request.getParentId()))
+                    .orElseThrow(() -> new EntityNotFoundException("Parent module not found"));
+            existingModule.setParent(parent);
+        } else {
+            existingModule.setParent(null); // Si no viene parentId, se elimina la relación
+        }
+
+        // Guardar los cambios y retornar la respuesta
+        return mapModule(modulesRepository.save(existingModule));
+    }
+
+    @Override
+    public ResponseServerDto delete(String id) {
+        UUID moduleId = UUID.fromString(id); // Asumo que ModuleRequest tiene un campo id
+        ModulesEntity existingModule = modulesRepository.findById(moduleId)
+                .orElseThrow(() -> new EntityNotFoundException(String.format(Messages.NOT_FOUND, id)));
+        try {
+            existingModule.setErased(true);
+            modulesRepository.save(existingModule);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
+    }
+
+    public Specification<ModulesEntity> filterWithParameters(Map<String, String> parameters) {
+        return new ModuleSpecification().getSpecificationByFilters(parameters);
     }
 }

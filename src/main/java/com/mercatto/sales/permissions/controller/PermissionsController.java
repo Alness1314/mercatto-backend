@@ -12,13 +12,18 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.permissions.dto.request.PermissionRequest;
+import com.mercatto.sales.permissions.dto.request.PermissionUpdateReq;
 import com.mercatto.sales.permissions.dto.response.PermissionResponse;
 import com.mercatto.sales.permissions.service.PermissionService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PutMapping;
 
 @RestController
 @RequestMapping("${api.prefix}/company")
@@ -35,9 +40,31 @@ public class PermissionsController {
     }
 
     @GetMapping("/{companyId}/permissions")
-    public ResponseEntity<List<PermissionResponse>> getMethodName(@PathVariable String companyId,
+    public ResponseEntity<List<PermissionResponse>> getAll(@PathVariable String companyId,
             @RequestParam Map<String, String> params) {
         List<PermissionResponse> response = permissionService.find(companyId, params);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @GetMapping("/{companyId}/permissions/profile/{profileId}/module/{moduleId}")
+    public ResponseEntity<PermissionResponse> getOne(@PathVariable String companyId,
+            @PathVariable String profileId, @PathVariable String moduleId) {
+        PermissionResponse response = permissionService.findOne(companyId, profileId, moduleId);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @PutMapping("/{companyId}/permissions/profile/{profileId}/module/{moduleId}")
+    public ResponseEntity<PermissionResponse> update(@PathVariable String companyId,
+            @PathVariable String profileId, @PathVariable String moduleId,
+            @RequestBody PermissionUpdateReq request) {
+        PermissionResponse response = permissionService.update(companyId, profileId, moduleId, request);
+        return new ResponseEntity<>(response, HttpStatus.CREATED);
+    }
+
+    @DeleteMapping("/{companyId}/permissions/profile/{profileId}/module/{moduleId}")
+    public ResponseEntity<ResponseServerDto> delete(@PathVariable String companyId,
+            @PathVariable String profileId, @PathVariable String moduleId) {
+        ResponseServerDto response = permissionService.delete(companyId, profileId, moduleId);
         return new ResponseEntity<>(response, HttpStatus.CREATED);
     }
 
