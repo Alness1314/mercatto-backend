@@ -1,10 +1,15 @@
 package com.mercatto.sales.products.service.impl;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.modelmapper.Converter;
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -15,6 +20,7 @@ import com.mercatto.sales.categories.entity.CategoryEntity;
 import com.mercatto.sales.categories.repository.CategoryRepository;
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
@@ -28,9 +34,13 @@ import com.mercatto.sales.products.entity.ProductEntity;
 import com.mercatto.sales.products.repository.ProductRepository;
 import com.mercatto.sales.products.service.ProductService;
 import com.mercatto.sales.products.specification.ProductSpecification;
+import com.mercatto.sales.transactions.dto.request.SalesRequest;
+import com.mercatto.sales.transactions.entity.SalesEntity;
 import com.mercatto.sales.unit.entity.UnitMeasurement;
 import com.mercatto.sales.unit.repository.UnitMeasurementRepo;
+import com.mercatto.sales.utils.DateTimeUtils;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -53,6 +63,34 @@ public class ProductServiceImpl implements ProductService {
 
     @Autowired
     private FileRepository fileRepository;
+
+    ModelMapper mapperUpdate = new ModelMapper();
+
+    @PostConstruct
+    private void init() {
+        mapperUpdate.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+
+        // Conversor seguro con manejo de errores
+        Converter<String, LocalDateTime> localDateTimeConverter = context -> {
+            try {
+                String source = context.getSource();
+                return source != null ? DateTimeUtils.parseToLocalDateTime(source) : null;
+            } catch (DateTimeParseException e) {
+                throw new IllegalArgumentException("Formato de fecha inválido", e);
+            }
+        };
+
+        // Registro global del conversor
+        mapperUpdate.addConverter(localDateTimeConverter);
+
+        // Mapeo específico para Sales
+        mapperUpdate.typeMap(SalesRequest.class, SalesEntity.class)
+                .addMappings(m -> m.using(localDateTimeConverter)
+                        .map(SalesRequest::getTransactionDateTime, SalesEntity::setTransactionDateTime));
+    }
 
     @Override
     public List<ProductResponse> find(String companyId, Map<String, String> params) {
@@ -112,12 +150,72 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public ProductResponse update(String companyId, String id, ProductRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+        // Verificar que la compañía existe
+        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        // Buscar el producto existente y verificar que pertenece a la compañía
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        ProductEntity existingProduct = productRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Product not found for this company"));
+
+        try {
+            // Actualizar los campos básicos del producto
+            mapperUpdate.map(request, existingProduct);
+
+            // Actualizar la categoría si viene en el request
+            if (request.getCategoryId() != null) {
+                CategoryEntity category = categoryRepository.findById(UUID.fromString(request.getCategoryId()))
+                        .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                                "Category not found"));
+                existingProduct.setCategory(category);
+            }
+
+            // Actualizar la unidad de medida si viene en el request
+            if (request.getUnitId() != null) {
+                UnitMeasurement um = unitMeasurementRepo.findById(UUID.fromString(request.getUnitId()))
+                        .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                                "Unit not found"));
+                existingProduct.setUnit(um);
+            }
+
+            // Actualizar la imagen si viene en el request
+            if (request.getImageId() != null) {
+                FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                        .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                                "Image not found"));
+                existingProduct.setImage(imageFile);
+            }
+
+            // Mantener la relación con la compañía
+            existingProduct.setCompany(company);
+
+            // Guardar los cambios
+            ProductEntity updatedProduct = productRepository.save(existingProduct);
+            return mapperDto(updatedProduct);
+
+        } catch (Exception e) {
+            log.error("Error updating product {}", e.getMessage());
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error updating product");
+        }
     }
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        ProductEntity existingProduct = productRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Product not found for this company"));
+        try {
+            existingProduct.setErased(true);
+            productRepository.save(existingProduct);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
 
     private ProductResponse mapperDto(ProductEntity source) {
