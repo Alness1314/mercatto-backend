@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
+import org.modelmapper.ModelMapper;
+import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
@@ -13,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
@@ -27,11 +30,12 @@ import com.mercatto.sales.transactions.specification.SalesSpecification;
 import com.mercatto.sales.users.entity.UserEntity;
 import com.mercatto.sales.users.repository.UserRepository;
 
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
 @Slf4j
-public class SalesServiceImpl implements SalesService{
+public class SalesServiceImpl implements SalesService {
     @Autowired
     private SalesRepository salesRepository;
 
@@ -43,6 +47,16 @@ public class SalesServiceImpl implements SalesService{
 
     @Autowired
     private GenericMapper mapper;
+
+    ModelMapper mapperUpdate = new ModelMapper();
+
+    @PostConstruct
+    private void init() {
+        mapperUpdate.getConfiguration()
+                .setSkipNullEnabled(true)
+                .setFieldMatchingEnabled(true)
+                .setMatchingStrategy(MatchingStrategies.STRICT);
+    }
 
     @Override
     public List<SalesResponse> find(String companyId, Map<String, String> params) {
@@ -88,14 +102,59 @@ public class SalesServiceImpl implements SalesService{
 
     @Override
     public SalesResponse update(String companyId, String id, SalesRequest request) {
-        throw new UnsupportedOperationException("Unimplemented method 'update'");
+        // 1. Verificar que la compañía existe
+        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+
+        // 2. Buscar la venta existente y verificar que pertenece a la compañía
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        SalesEntity existingSale = salesRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Sale not found for this company"));
+
+        try {
+            // 3. Actualizar campos básicos con el mapper (ignorando nulos)
+            mapperUpdate.map(request, existingSale);
+
+            // 4. Actualizar usuario si viene en el request
+            if (request.getUserId() != null) {
+                UserEntity user = userRepository.findById(UUID.fromString(request.getUserId()))
+                        .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                                "User not found"));
+                existingSale.setUser(user);
+            }
+
+            // 5. Mantener la relación con la compañía
+            existingSale.setCompany(company);
+
+            // 6. Guardar los cambios
+            SalesEntity updatedSale = salesRepository.save(existingSale);
+            return mapperDto(updatedSale);
+
+        } catch (Exception e) {
+            log.error("Error updating sale {}", e.getMessage());
+            e.printStackTrace();
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Error updating sale");
+        }
     }
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
-        throw new UnsupportedOperationException("Unimplemented method 'delete'");
+        Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
+        SalesEntity existingSale = salesRepository.findOne(filterWithParameters(params))
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        "Sale not found for this company"));
+        try {
+            existingSale.setErased(true);
+            salesRepository.save(existingSale);
+            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+        } catch (Exception e) {
+            throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
+                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+        }
     }
-    
+
     private SalesResponse mapperDto(SalesEntity source) {
         return mapper.map(source, SalesResponse.class);
     }
