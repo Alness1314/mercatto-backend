@@ -6,6 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.mercatto.sales.annotations.core.EnumValidator;
+import com.mercatto.sales.common.messages.Messages;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
@@ -16,7 +17,7 @@ import jakarta.validation.Payload;
 public @interface ValidEnum {
     Class<? extends Enum<?>> enumClass();
 
-    String message() default "El valor no es válido para el enum proporcionado.";
+    String message() default Messages.ENUM_ANNOTATION;
 
     Class<?>[] groups() default {};
 

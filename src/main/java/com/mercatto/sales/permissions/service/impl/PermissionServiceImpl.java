@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -33,7 +34,10 @@ import com.mercatto.sales.profiles.dto.response.ProfileDto;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.profiles.repository.ProfileRepository;
 
+import lombok.extern.slf4j.Slf4j;
+
 @Service
+@Slf4j
 public class PermissionServiceImpl implements PermissionService {
     @Autowired
     private ProfileRepository profileRepository;
@@ -50,7 +54,8 @@ public class PermissionServiceImpl implements PermissionService {
     @Override
     public PermissionResponse save(String companyId, PermissionRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
         PermissionEntity permission = new PermissionEntity();
 
         // Asignar clave compuesta
@@ -61,12 +66,13 @@ public class PermissionServiceImpl implements PermissionService {
 
         // Asignar entidades relacionadas (referencia mínima)
         ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfileId()))
-                .orElseThrow(
-                        () -> new IllegalArgumentException("Profile not found with id: " + request.getProfileId()));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, request.getProfileId())));
         permission.setProfile(profile);
 
         ModulesEntity module = modulesRepository.findById(UUID.fromString(request.getModuleId()))
-                .orElseThrow(() -> new IllegalArgumentException("Module not found with id: " + request.getModuleId()));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, request.getModuleId())));
         permission.setModule(module);
 
         // Asignar flags de permisos
@@ -98,9 +104,10 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public PermissionResponse findOne(String companyId, String profileId, String moduleId) {
-        Map<String, String> params = Map.of("profle", profileId, "module", moduleId, Filters.KEY_COMPANY_ID, companyId);
+        Map<String, String> params = Map.of(Filters.KEY_PROFILE, profileId, Filters.KEY_MODULE, moduleId, Filters.KEY_COMPANY_ID, companyId);
         PermissionEntity permissionEntity = permissionRepository.findOne(filterWithParameters(params))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, moduleId)));
         return mapPermission(permissionEntity);
     }
 
@@ -108,7 +115,8 @@ public class PermissionServiceImpl implements PermissionService {
     public PermissionResponse update(String companyId, String profileId, String moduleId, PermissionUpdateReq request) {
         // Verificar que la compañía existe
         companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         // Crear la clave compuesta para buscar el permiso existente
         PermissionId id = new PermissionId();
@@ -142,15 +150,20 @@ public class PermissionServiceImpl implements PermissionService {
 
     @Override
     public ResponseServerDto delete(String companyId, String profileId, String moduleId) {
-        Map<String, String> params = Map.of("profle", profileId, "module", moduleId, Filters.KEY_COMPANY_ID, companyId);
+        Map<String, String> params = Map.of("profle", profileId, Filters.KEY_MODULE, moduleId, Filters.KEY_COMPANY_ID, companyId);
         PermissionEntity permissionEntity = permissionRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
         try {
             permissionRepository.delete(permissionEntity);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, moduleId), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, moduleId), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 

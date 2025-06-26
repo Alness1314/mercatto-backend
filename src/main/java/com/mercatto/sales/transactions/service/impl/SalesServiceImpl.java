@@ -8,10 +8,10 @@ import java.util.UUID;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
@@ -74,28 +74,32 @@ public class SalesServiceImpl implements SalesService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         SalesEntity sales = salesRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(sales);
     }
 
     @Override
     public SalesResponse save(String companyId, SalesRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
         SalesEntity sale = mapper.map(request, SalesEntity.class);
         // ligar el usuario con la venta
         UserEntity user = userRepository.findById(UUID.fromString(request.getUserId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "User not found"));
+                        String.format(Messages.NOT_FOUND, request.getUserId())));
         sale.setUser(user);
         try {
             sale.setCompany(company);
             sale = salesRepository.save(sale);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save sale {}", e.getMessage());
-            e.printStackTrace();
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error to save sale");
+                    Messages.ERROR_ENTITY_SAVE);
         }
         return mapperDto(sale);
     }
@@ -104,13 +108,14 @@ public class SalesServiceImpl implements SalesService {
     public SalesResponse update(String companyId, String id, SalesRequest request) {
         // 1. Verificar que la compañía existe
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         // 2. Buscar la venta existente y verificar que pertenece a la compañía
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         SalesEntity existingSale = salesRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
 
         try {
             // 3. Actualizar campos básicos con el mapper (ignorando nulos)
@@ -120,7 +125,7 @@ public class SalesServiceImpl implements SalesService {
             if (request.getUserId() != null) {
                 UserEntity user = userRepository.findById(UUID.fromString(request.getUserId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "User not found"));
+                                String.format(Messages.NOT_FOUND, request.getUserId())));
                 existingSale.setUser(user);
             }
 
@@ -131,11 +136,14 @@ public class SalesServiceImpl implements SalesService {
             SalesEntity updatedSale = salesRepository.save(existingSale);
             return mapperDto(updatedSale);
 
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error updating sale {}", e.getMessage());
-            e.printStackTrace();
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error updating sale");
+                    Messages.ERROR_ENTITY_UPDATE);
         }
     }
 
@@ -144,14 +152,19 @@ public class SalesServiceImpl implements SalesService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         SalesEntity existingSale = salesRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
         try {
             existingSale.setErased(true);
             salesRepository.save(existingSale);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 

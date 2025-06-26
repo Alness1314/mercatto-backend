@@ -11,10 +11,10 @@ import org.modelmapper.Converter;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.mercatto.sales.categories.entity.CategoryEntity;
 import com.mercatto.sales.categories.repository.CategoryRepository;
@@ -108,42 +108,46 @@ public class ProductServiceImpl implements ProductService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         ProductEntity product = productRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Product not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(product);
     }
 
     @Override
     public ProductResponse save(String companyId, ProductRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
         ProductEntity product = mapper.map(request, ProductEntity.class);
         // ligar la categoria con el producto
         CategoryEntity categoria = categoryRepository.findById(UUID.fromString(request.getCategoryId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Category not found"));
+                        String.format(Messages.NOT_FOUND, request.getCategoryId())));
         product.setCategory(categoria);
 
         // ligar la unidad de medida con el producto
         UnitMeasurement um = unitMeasurementRepo.findById(UUID.fromString(request.getUnitId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Unit not found"));
+                        String.format(Messages.NOT_FOUND, request.getUnitId())));
         product.setUnit(um);
 
         if (request.getImageId() != null) {
-            log.info("ingreso a imagen");
             FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
                     .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                            "image not found"));
+                            Messages.NOT_FOUND_FILE));
             product.setImage(imageFile);
         }
 
         try {
             product.setCompany(company);
             product = productRepository.save(product);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save category {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error to save category");
+                    Messages.ERROR_ENTITY_SAVE);
         }
         return mapperDto(product);
     }
@@ -152,13 +156,14 @@ public class ProductServiceImpl implements ProductService {
     public ProductResponse update(String companyId, String id, ProductRequest request) {
         // Verificar que la compañía existe
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         // Buscar el producto existente y verificar que pertenece a la compañía
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         ProductEntity existingProduct = productRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Product not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
 
         try {
             // Actualizar los campos básicos del producto
@@ -168,7 +173,7 @@ public class ProductServiceImpl implements ProductService {
             if (request.getCategoryId() != null) {
                 CategoryEntity category = categoryRepository.findById(UUID.fromString(request.getCategoryId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "Category not found"));
+                                String.format(Messages.NOT_FOUND, request.getCategoryId())));
                 existingProduct.setCategory(category);
             }
 
@@ -176,7 +181,7 @@ public class ProductServiceImpl implements ProductService {
             if (request.getUnitId() != null) {
                 UnitMeasurement um = unitMeasurementRepo.findById(UUID.fromString(request.getUnitId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "Unit not found"));
+                                String.format(Messages.NOT_FOUND, request.getUnitId())));
                 existingProduct.setUnit(um);
             }
 
@@ -184,7 +189,7 @@ public class ProductServiceImpl implements ProductService {
             if (request.getImageId() != null) {
                 FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "Image not found"));
+                                Messages.NOT_FOUND_FILE));
                 existingProduct.setImage(imageFile);
             }
 
@@ -195,10 +200,14 @@ public class ProductServiceImpl implements ProductService {
             ProductEntity updatedProduct = productRepository.save(existingProduct);
             return mapperDto(updatedProduct);
 
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error updating product {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error updating product");
+                    Messages.ERROR_ENTITY_UPDATE);
         }
     }
 
@@ -207,14 +216,19 @@ public class ProductServiceImpl implements ProductService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         ProductEntity existingProduct = productRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Product not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
         try {
             existingProduct.setErased(true);
             productRepository.save(existingProduct);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 

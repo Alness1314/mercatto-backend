@@ -8,10 +8,10 @@ import java.util.UUID;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
@@ -69,22 +69,27 @@ public class UnitMeasurementServiceImp implements UnitMeasurementService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         UnitMeasurement um = unitMeasurementRepo.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Category not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(um);
     }
 
     @Override
     public UnitMeasurementResp save(String companyId, UnitMeasurementReq request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
         UnitMeasurement um = mapper.map(request, UnitMeasurement.class);
         try {
             um.setCompany(company);
             um = unitMeasurementRepo.save(um);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save category {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error to save category");
+                    Messages.ERROR_ENTITY_SAVE);
         }
         return mapperDto(um);
     }
@@ -93,13 +98,14 @@ public class UnitMeasurementServiceImp implements UnitMeasurementService {
     public UnitMeasurementResp update(String companyId, String id, UnitMeasurementReq request) {
         // Verificar que la compañía existe
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         // Buscar la unidad de medida existente
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         UnitMeasurement existingUnit = unitMeasurementRepo.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Unit of measurement not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
 
         try {
             // Actualizar los campos de la entidad existente con los valores del request
@@ -109,10 +115,14 @@ public class UnitMeasurementServiceImp implements UnitMeasurementService {
             // Guardar los cambios
             UnitMeasurement updatedUnit = unitMeasurementRepo.save(existingUnit);
             return mapperDto(updatedUnit);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error updating unit of measurement {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error updating unit of measurement");
+                    Messages.ERROR_ENTITY_UPDATE);
         }
     }
 
@@ -121,14 +131,19 @@ public class UnitMeasurementServiceImp implements UnitMeasurementService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         UnitMeasurement existingUnit = unitMeasurementRepo.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Unit of measurement not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
         try {
             existingUnit.setErased(true);
             unitMeasurementRepo.save(existingUnit);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 

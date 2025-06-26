@@ -9,6 +9,7 @@ import java.util.UUID;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -57,16 +58,22 @@ public class ProfileServiceImpl implements ProfileService {
     @Override
     public ProfileResponse save(String companyId, ProfileRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         ProfileEntity newProfile = mapper.map(request, ProfileEntity.class);
         try {
             newProfile.setCompany(company);
             newProfile = profileRepository.save(newProfile);
             return mapperDto(newProfile);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save profile ", e);
-            throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_ENTITY_SAVE);
         }
     }
 
@@ -74,8 +81,8 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse findOne(String companyId, String id) {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         ProfileEntity profile = profileRepository.findOne(filterWithParameters(params))
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(Messages.NOT_FOUND, id)));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(profile);
     }
 
@@ -91,7 +98,8 @@ public class ProfileServiceImpl implements ProfileService {
     public ProfileResponse update(String companyId, String id, ProfileRequest request) {
         // Verificar que la compañía existe
         companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         // Buscar el perfil existente
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
@@ -106,9 +114,14 @@ public class ProfileServiceImpl implements ProfileService {
             // Guardar los cambios
             ProfileEntity updatedProfile = profileRepository.save(existingProfile);
             return mapperDto(updatedProfile);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error updating profile with id: " + id, e);
-            throw new ResponseStatusException(HttpStatus.METHOD_NOT_ALLOWED, "Could not update profile");
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_ENTITY_UPDATE);
         }
     }
 
@@ -117,15 +130,20 @@ public class ProfileServiceImpl implements ProfileService {
         // Buscar el perfil existente
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         ProfileEntity existingProfile = profileRepository.findOne(filterWithParameters(params))
-                .orElseThrow(
-                        () -> new ResponseStatusException(HttpStatus.NOT_FOUND, String.format(Messages.NOT_FOUND, id)));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
         try {
             existingProfile.setErased(true);
             profileRepository.save(existingProfile);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 
@@ -156,13 +174,16 @@ public class ProfileServiceImpl implements ProfileService {
                     .build()));
 
             profileRepository.saveAll(profiles);
-            return new ResponseServerDto("the profiles have been created.", HttpStatus.ACCEPTED, true,
+            return new ResponseServerDto(Messages.PROFILES_CREATE, HttpStatus.ACCEPTED, true,
                     Map.of("data", profiles));
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save all profiles ", e);
-            return new ResponseServerDto("An error occurred while creating the profiles", HttpStatus.METHOD_NOT_ALLOWED,
-                    false,
-                    null);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_ENTITY_SAVE);
         }
     }
 }

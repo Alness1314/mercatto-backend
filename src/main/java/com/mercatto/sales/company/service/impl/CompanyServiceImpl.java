@@ -7,6 +7,7 @@ import java.util.UUID;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -73,10 +74,9 @@ public class CompanyServiceImpl implements CompanyService {
     @Override
     public CompanyResponse findOne(String id) {
         UUID idUUID = UUID.fromString(id);
-        log.info("UUID id: {}", idUUID);
         CompanyEntity company = companyRepository.findById(idUUID)
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "company not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(company);
     }
 
@@ -84,26 +84,29 @@ public class CompanyServiceImpl implements CompanyService {
     public CompanyResponse save(CompanyRequest request) {
         TaxpayerEntity taxpayer = taxpayerRepository.findById(UUID.fromString(request.getTaxpayerId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "taxpayer not found"));
+                        String.format(Messages.NOT_FOUND, request.getTaxpayerId())));
 
         CompanyEntity company = mapper.map(request, CompanyEntity.class);
         AddressResponse address = addressService.save(request.getAddress());
         company.setAddress(mapper.map(address, AddressEntity.class));
 
         if (request.getImageId() != null) {
-            log.info("ingreso a imagen");
             FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
                     .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                            "image not found"));
+                            String.format(Messages.NOT_FOUND, request.getImageId())));
             company.setImage(imageFile);
         }
         company.setTaxpayer(taxpayer);
         try {
             company = companyRepository.save(company);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save company {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error to save company");
+                    Messages.ERROR_ENTITY_SAVE);
         }
         return mapperDto(company);
     }
@@ -113,12 +116,12 @@ public class CompanyServiceImpl implements CompanyService {
         // Find existing company
         CompanyEntity existingCompany = companyRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Company not found"));
+                        String.format(Messages.NOT_FOUND, id)));
 
         // Verify taxpayer exists if it's being updated
         TaxpayerEntity taxpayer = taxpayerRepository.findById(UUID.fromString(request.getTaxpayerId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Taxpayer not found"));
+                        String.format(Messages.NOT_FOUND, request.getTaxpayerId())));
 
         // Update address if present
         if (request.getAddress() != null) {
@@ -132,7 +135,7 @@ public class CompanyServiceImpl implements CompanyService {
         if (request.getImageId() != null) {
             FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
                     .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                            "Image not found"));
+                            String.format(Messages.NOT_FOUND, request.getImageId())));
             existingCompany.setImage(imageFile);
         } else {
             existingCompany.setImage(null); // Clear image if no imageId provided
@@ -144,10 +147,14 @@ public class CompanyServiceImpl implements CompanyService {
 
         try {
             existingCompany = companyRepository.save(existingCompany);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error updating company {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error updating company");
+                    Messages.ERROR_ENTITY_UPDATE);
         }
 
         return mapperDto(existingCompany);
@@ -158,14 +165,19 @@ public class CompanyServiceImpl implements CompanyService {
         // Find existing company
         CompanyEntity existingCompany = companyRepository.findById(UUID.fromString(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Company not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         try {
             existingCompany.setErased(true);
             companyRepository.save(existingCompany);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
 
     }

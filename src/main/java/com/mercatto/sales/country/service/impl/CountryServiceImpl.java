@@ -5,11 +5,14 @@ import java.util.List;
 import java.util.Map;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.keys.Filters;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.country.dto.request.CountryRequest;
@@ -41,9 +44,9 @@ public class CountryServiceImpl implements CountryService {
 
     @Override
     public CountryResponse findOne(String id) {
-        CountryEntity country = countryRepository.findOne(filterWithParameters(Map.of("id", id)))
+        CountryEntity country = countryRepository.findOne(filterWithParameters(Map.of(Filters.KEY_ID, id)))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Country not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(country);
     }
 
@@ -52,10 +55,14 @@ public class CountryServiceImpl implements CountryService {
         CountryEntity newCountry = mapper.map(request, CountryEntity.class);
         try {
             newCountry = countryRepository.save(newCountry);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save country {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error to save country");
+                    Messages.ERROR_ENTITY_SAVE);
         }
         return mapperDto(newCountry);
     }
@@ -78,13 +85,15 @@ public class CountryServiceImpl implements CountryService {
                     .code(item.getCode())
                     .build()));
             countryRepository.saveAll(countries);
-            return new ResponseServerDto("the countries have been created.", HttpStatus.ACCEPTED, true, null);
+            return new ResponseServerDto(Messages.COUNTRY_CREATE, HttpStatus.ACCEPTED, true, null);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save all states ", e);
-            return new ResponseServerDto("An error occurred while creating the countries",
-                    HttpStatus.METHOD_NOT_ALLOWED,
-                    false,
-                    null);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_ENTITY_SAVE);
         }
     }
 }

@@ -15,6 +15,7 @@ import java.util.UUID;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.UrlResource;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
@@ -48,8 +49,6 @@ public class FileServiceImpl implements FileService {
     private final String baseDir = System.getProperty("user.dir") + File.separator + "assets" + File.separator;
     private final String uploadPath = baseDir + "uploads" + File.separator;
 
-    private String msgNotFound = "File with id or name: [%s] not found";
-
     ModelMapper mapper = new ModelMapper();
 
     @PostConstruct
@@ -74,7 +73,7 @@ public class FileServiceImpl implements FileService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id);
         FileEntity fileEntity = fileRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        String.format(msgNotFound, id)));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(fileEntity);
     }
 
@@ -109,11 +108,15 @@ public class FileServiceImpl implements FileService {
             fileRepository.save(fileEntity);
 
             return mapperDto(fileEntity);
-        } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Could not store file " + fileName + ". Please try again!", ex);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
+        } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_ENTITY_SAVE);
         }
-
     }
 
     @Override
@@ -128,12 +131,20 @@ public class FileServiceImpl implements FileService {
                                 "attachment; filename=\"" + resource.getFilename() + "\"")
                         .body(resource);
             } else {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        String.format(msgNotFound, fileResponse.getName()));
+                throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND_FILE, fileResponse.getName()));
             }
+        } catch (RestExceptionHandler e) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw e;
         } catch (MalformedURLException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    String.format(msgNotFound, fileResponse.getName()), ex);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_412, HttpStatus.PRECONDITION_FAILED,
+                    Messages.ERROR_FILE_DOWNLOAD);
+        } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_FILE_DOWNLOAD);
         }
     }
 
@@ -147,12 +158,20 @@ public class FileServiceImpl implements FileService {
                         .contentType(MediaType.parseMediaType(Files.probeContentType(filePath)))
                         .body(resource);
             } else {
-                throw new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        String.format(msgNotFound, fileResponse.getName()));
+                throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND_FILE, fileResponse.getName()));
             }
+        } catch (RestExceptionHandler e) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw e;
         } catch (IOException ex) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    String.format(msgNotFound, fileResponse.getName()), ex);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_412, HttpStatus.PRECONDITION_FAILED,
+                    Messages.ERROR_FILE_DOWNLOAD);
+        } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_FILE_DOWNLOAD);
         }
     }
 
@@ -177,11 +196,15 @@ public class FileServiceImpl implements FileService {
 
             // Eliminar la entidad de la base de datos (borrado físico)
             fileRepository.delete(fileEntity);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
         } catch (IOException ex) {
-            log.error("Error deleting file with id: {}", id, ex);
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Could not delete file " + fileEntity.getName(), ex);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_412, HttpStatus.PRECONDITION_FAILED,
+                    Messages.ERROR_FILE_DOWNLOAD);
+        } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
+                    Messages.ERROR_FILE_DOWNLOAD);
         }
     }
 }

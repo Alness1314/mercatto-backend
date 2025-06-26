@@ -80,18 +80,17 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public UserResponse save(String companyId, UserRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, companyId)));
         UserEntity newUser = mapper.map(request, UserEntity.class);
         try {
             if (request.getProfile() == null) {
-                throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT, "Profile not found");
+                throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND, Messages.NOT_FOUND_BASIC);
             }
             if (request.getImageId() != null) {
-                log.info("ingreso a imagen");
                 FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "image not found"));
+                                Messages.NOT_FOUND_FILE));
                 newUser.setImage(imageFile);
             }
             ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile())).orElse(null);
@@ -102,17 +101,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             return mapperDto(newUser);
         } catch (DataIntegrityViolationException ex) {
             if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Username already exists: " + request.getUsername(), ex);
+                throw new RestExceptionHandler(ApiCodes.API_CODE_412,
+                        HttpStatus.PRECONDITION_FAILED, Messages.USER_ALREADY_REGISTERED);
             }
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Data integrity violation", ex);
-        } catch (ResponseStatusException ex) {
+                    HttpStatus.CONFLICT, Messages.DATA_INTEGRITY, ex);
+        } catch (RestExceptionHandler ex) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
             throw ex; // Re-lanzar excepciones ya gestionadas
         } catch (Exception ex) {
-            log.error("Error to save user", ex);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", ex);
+                    HttpStatus.INTERNAL_SERVER_ERROR, Messages.ERROR_ENTITY_SAVE, ex);
         }
     }
 
@@ -121,7 +122,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
         UserEntity newUser = mapper.map(request, UserEntity.class);
         try {
             if (request.getProfile() == null) {
-                throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT);
+                throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND, Messages.NOT_FOUND_BASIC);
             }
             ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile())).orElse(null);
             newUser.setProfile(profile);
@@ -131,17 +132,19 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             return mapperDto(newUser);
         } catch (DataIntegrityViolationException ex) {
             if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Username already exists: " + request.getUsername(), ex);
+                throw new RestExceptionHandler(ApiCodes.API_CODE_412,
+                        HttpStatus.PRECONDITION_FAILED, Messages.USER_ALREADY_REGISTERED);
             }
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Data integrity violation", ex);
-        } catch (ResponseStatusException ex) {
+                    HttpStatus.CONFLICT, Messages.DATA_INTEGRITY, ex);
+        } catch (RestExceptionHandler ex) {
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
             throw ex; // Re-lanzar excepciones ya gestionadas
         } catch (Exception ex) {
-            log.error("Error to save user", ex);
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", ex);
+                    HttpStatus.INTERNAL_SERVER_ERROR, Messages.ERROR_ENTITY_SAVE, ex);
         }
     }
 
@@ -149,7 +152,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserResponse findOne(String companyId, String id) {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         UserEntity findUser = userRepository.findOne(filterWithParameters(params))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(findUser);
     }
 
@@ -165,23 +169,25 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserResponse update(String companyId, String id, UserRequest request) {
         // Find existing company and user
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         UserEntity existingUser = userRepository.findOne(filterWithParameters(params))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found in this company"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
 
         try {
             // Validate profile
             if (request.getProfile() == null) {
-                throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT, "Profile not found");
+                throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND, Messages.NOT_FOUND_BASIC);
             }
 
             // Update image if provided
             if (request.getImageId() != null) {
                 FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "Image not found"));
+                                Messages.NOT_FOUND_FILE));
                 existingUser.setImage(imageFile);
             } else {
                 existingUser.setImage(null); // Clear image if no imageId provided
@@ -189,7 +195,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
             // Update profile
             ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile()))
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Profile not found"));
+                    .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                            Messages.NOT_FOUND_BASIC));
             existingUser.setProfile(profile);
 
             // Update other fields
@@ -205,36 +212,45 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             return mapperDto(updatedUser);
         } catch (DataIntegrityViolationException ex) {
             if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
-                throw new ResponseStatusException(
-                        HttpStatus.CONFLICT, "Username already exists: " + request.getUsername(), ex);
+                throw new RestExceptionHandler(ApiCodes.API_CODE_412,
+                        HttpStatus.PRECONDITION_FAILED, Messages.USER_ALREADY_REGISTERED);
             }
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
-                    HttpStatus.BAD_REQUEST, "Data integrity violation", ex);
-        } catch (ResponseStatusException ex) {
-            throw ex;
+                    HttpStatus.CONFLICT, Messages.DATA_INTEGRITY, ex);
+        } catch (RestExceptionHandler ex) {
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, ex.getMessage(), ex);
+            throw ex; // Re-lanzar excepciones ya gestionadas
         } catch (Exception ex) {
-            log.error("Error updating user", ex);
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
-                    HttpStatus.INTERNAL_SERVER_ERROR, "Unexpected server error", ex);
+                    HttpStatus.INTERNAL_SERVER_ERROR, Messages.ERROR_ENTITY_UPDATE, ex);
         }
     }
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
         companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         UserEntity existingUser = userRepository.findOne(filterWithParameters(params))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found in this company"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
 
         try {
             existingUser.setErased(true);
             userRepository.save(existingUser);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 
@@ -249,9 +265,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
         Specification<UserEntity> specification = filterWithParameters(Map.of("username", username));
-        UserEntity user = userRepository.findOne(specification).orElseThrow(
-                () -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                        String.format("User with name: [%s] not found in database", username)));
+        UserEntity user = userRepository.findOne(specification)
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, username)));
         Collection<SimpleGrantedAuthority> authorities = new ArrayList<>();
         authorities.add(new SimpleGrantedAuthority(user.getProfile().getName()));
         return new CustomUser(user.getUsername(), user.getPassword(), authorities,
@@ -272,7 +288,8 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     public UserResponse findOneWithoutCompany(String id) {
         Map<String, String> params = Map.of(Filters.KEY_ID, id);
         UserEntity findUser = userRepository.findOne(filterWithParameters(params))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "resource not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(findUser);
     }
 

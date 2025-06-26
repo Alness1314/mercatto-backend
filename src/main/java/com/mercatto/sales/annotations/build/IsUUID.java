@@ -6,6 +6,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
 import com.mercatto.sales.annotations.core.UUIDValidator;
+import com.mercatto.sales.common.messages.Messages;
 
 import jakarta.validation.Constraint;
 import jakarta.validation.Payload;
@@ -14,7 +15,7 @@ import jakarta.validation.Payload;
 @Retention(RetentionPolicy.RUNTIME)
 @Constraint(validatedBy = UUIDValidator.class)
 public @interface IsUUID {
-    String message() default "The value is not a valid UUID.";
+    String message() default Messages.UUID_ANNOTATION;
     Class<?>[] groups() default {};
     Class<? extends Payload>[] payload() default {};
 }

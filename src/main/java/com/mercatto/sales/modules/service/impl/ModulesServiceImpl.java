@@ -8,11 +8,13 @@ import java.util.Optional;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
 import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.keys.Filters;
 import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
@@ -27,8 +29,10 @@ import com.mercatto.sales.permissions.entity.PermissionEntity;
 import com.mercatto.sales.profiles.dto.response.ProfileDto;
 
 import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.slf4j.Slf4j;
 
 @Service
+@Slf4j
 public class ModulesServiceImpl implements ModulesService {
     @Autowired
     private ModulesRepository modulesRepository;
@@ -70,7 +74,8 @@ public class ModulesServiceImpl implements ModulesService {
 
         if (request.getParentId() != null) {
             ModulesEntity parent = modulesRepository.findById(UUID.fromString(request.getParentId()))
-                    .orElseThrow(() -> new EntityNotFoundException("Parent module not found"));
+                    .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                            String.format(Messages.NOT_FOUND, request.getParentId())));
             module.setParent(parent);
         }
 
@@ -80,7 +85,8 @@ public class ModulesServiceImpl implements ModulesService {
     @Override
     public ModuleResponse findOne(String id) {
         ModulesEntity module = modulesRepository.findById(UUID.fromString(id))
-                .orElseThrow(() -> new EntityNotFoundException("Module not found with id: " + id));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
 
         return mapModule(module);
     }
@@ -99,9 +105,9 @@ public class ModulesServiceImpl implements ModulesService {
         modules.forEach(item -> {
             ModuleResponse resp = save(item);
             if (resp != null) {
-                response.add(Map.of("module", resp.getName(), "status", true));
+                response.add(Map.of(Filters.KEY_MODULE, resp.getName(), Filters.KEY_STATUS, true));
             } else {
-                response.add(Map.of("module", item.getName(), "status", false));
+                response.add(Map.of(Filters.KEY_MODULE, item.getName(), Filters.KEY_STATUS, false));
             }
         });
         return new ResponseServerDto("Modulos creados", HttpStatus.ACCEPTED, true, Map.of("data", response));
@@ -147,7 +153,8 @@ public class ModulesServiceImpl implements ModulesService {
         // Verificar que el módulo a actualizar existe
         UUID moduleId = UUID.fromString(id); // Asumo que ModuleRequest tiene un campo id
         ModulesEntity existingModule = modulesRepository.findById(moduleId)
-                .orElseThrow(() -> new EntityNotFoundException("Module not found with id: " + id));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, id)));
 
         // Actualizar los campos del módulo existente
         existingModule.setName(request.getName());
@@ -157,7 +164,8 @@ public class ModulesServiceImpl implements ModulesService {
         // Manejar la relación padre (similar al save)
         if (request.getParentId() != null) {
             ModulesEntity parent = modulesRepository.findById(UUID.fromString(request.getParentId()))
-                    .orElseThrow(() -> new EntityNotFoundException("Parent module not found"));
+                    .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                            String.format(Messages.NOT_FOUND, request.getParentId())));
             existingModule.setParent(parent);
         } else {
             existingModule.setParent(null); // Si no viene parentId, se elimina la relación
@@ -175,10 +183,15 @@ public class ModulesServiceImpl implements ModulesService {
         try {
             existingModule.setErased(true);
             modulesRepository.save(existingModule);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 

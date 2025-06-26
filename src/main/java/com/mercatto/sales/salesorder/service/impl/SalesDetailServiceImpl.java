@@ -8,10 +8,10 @@ import java.util.UUID;
 import org.modelmapper.ModelMapper;
 import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
@@ -79,34 +79,39 @@ public class SalesDetailServiceImpl implements SalesDetailsService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         SalesDetailsEntity saleDetail = salesDetailsRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale detail not found"));
+                        String.format(Messages.NOT_FOUND, id)));
         return mapperDto(saleDetail);
     }
 
     @Override
     public SalesDetailsResponse save(String companyId, SalesDetailsRequest request) {
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
         SalesDetailsEntity saleDetail = mapper.map(request, SalesDetailsEntity.class);
         // ligar la categoria con el producto
         ProductEntity product = productRepository.findById(UUID.fromString(request.getProductId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Product not found"));
+                        String.format(Messages.NOT_FOUND, request.getProductId())));
         saleDetail.setProduct(product);
 
         // ligar con la venta
         SalesEntity sales = salesRepository.findById(UUID.fromString(request.getSalesId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale not found"));
+                        String.format(Messages.NOT_FOUND, request.getSalesId())));
 
         saleDetail.setSales(sales);
         saleDetail.setCompany(company.getId());
         try {
             saleDetail = salesDetailsRepository.save(saleDetail);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error to save sale detail {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error to save sale detail");
+                    Messages.ERROR_ENTITY_SAVE);
         }
         return mapperDto(saleDetail);
     }
@@ -115,14 +120,15 @@ public class SalesDetailServiceImpl implements SalesDetailsService {
     public SalesDetailsResponse update(String companyId, String id, SalesDetailsRequest request) {
         // 1. Verificar que la compañía existe
         CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Company not found"));
+                .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
+                        String.format(Messages.NOT_FOUND, companyId)));
 
         // 2. Buscar el detalle de venta existente y verificar que pertenece a la
         // compañía
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         SalesDetailsEntity existingDetail = salesDetailsRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale detail not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
 
         try {
             // 3. Actualizar campos básicos con el mapper (ignorando nulos)
@@ -132,7 +138,7 @@ public class SalesDetailServiceImpl implements SalesDetailsService {
             if (request.getProductId() != null) {
                 ProductEntity product = productRepository.findById(UUID.fromString(request.getProductId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "Product not found"));
+                                String.format(Messages.NOT_FOUND, request.getProductId())));
                 existingDetail.setProduct(product);
             }
 
@@ -140,7 +146,7 @@ public class SalesDetailServiceImpl implements SalesDetailsService {
             if (request.getSalesId() != null) {
                 SalesEntity sales = salesRepository.findById(UUID.fromString(request.getSalesId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                                "Sale not found"));
+                                String.format(Messages.NOT_FOUND, request.getSalesId())));
                 existingDetail.setSales(sales);
             }
 
@@ -151,10 +157,14 @@ public class SalesDetailServiceImpl implements SalesDetailsService {
             SalesDetailsEntity updatedDetail = salesDetailsRepository.save(existingDetail);
             return mapperDto(updatedDetail);
 
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error("Error updating sale detail {}", e.getMessage());
+            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
-                    "Error updating sale detail");
+                    Messages.ERROR_ENTITY_UPDATE);
         }
     }
 
@@ -163,14 +173,19 @@ public class SalesDetailServiceImpl implements SalesDetailsService {
         Map<String, String> params = Map.of(Filters.KEY_ID, id, Filters.KEY_COMPANY_ID, companyId);
         SalesDetailsEntity existingDetail = salesDetailsRepository.findOne(filterWithParameters(params))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
-                        "Sale detail not found for this company"));
+                        String.format(Messages.NOT_FOUND, id)));
         try {
             existingDetail.setErased(true);
             salesDetailsRepository.save(existingDetail);
-            return new ResponseServerDto(String.format(Messages.DELETE_ENTITY, id), HttpStatus.ACCEPTED, true);
+            return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
+        } catch (DataIntegrityViolationException ex) {
+            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
+                    Messages.DATA_INTEGRITY);
         } catch (Exception e) {
+            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
-                    String.format(Messages.ERROR_TO_SAVE_ENTITY, e.getMessage()));
+                    String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
     }
 
