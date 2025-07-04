@@ -9,20 +9,21 @@ import java.util.Optional;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 
-import com.mercatto.sales.app.dto.JwtDto;
+import com.mercatto.sales.app.jwt.JwtDto;
 import com.mercatto.sales.app.service.AppConfigService;
 import com.mercatto.sales.app.service.DecodeJwtService;
 import com.mercatto.sales.app.service.JsonFileReaderService;
-import com.mercatto.sales.auth.dto.KeyPrefix;
 import com.mercatto.sales.cities.service.CityService;
+import com.mercatto.sales.common.api.ApiCodes;
+import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
 import com.mercatto.sales.country.dto.request.CountryRequest;
 import com.mercatto.sales.country.dto.response.CountryResponse;
 import com.mercatto.sales.country.service.CountryService;
+import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
 import com.mercatto.sales.profiles.repository.ProfileRepository;
 import com.mercatto.sales.states.dto.response.StateResponse;
@@ -30,6 +31,7 @@ import com.mercatto.sales.states.service.StateService;
 import com.mercatto.sales.users.dto.request.UserRequest;
 import com.mercatto.sales.users.dto.response.UserResponse;
 import com.mercatto.sales.users.service.UserService;
+import com.mercatto.sales.utils.TokenHandler;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -166,21 +168,13 @@ public class AppConfigServiceImpl implements AppConfigService {
 
     @Override
     public ResponseServerDto checkStatusSession(HttpServletRequest request) {
-        String header = request.getHeader(HttpHeaders.AUTHORIZATION);
 
-        if (header == null || !header.startsWith(KeyPrefix.PREFIX_TOKEN)) {
-            return new ResponseServerDto("Sesión no válida o expirada.", HttpStatus.UNAUTHORIZED, false);
-        }
-
-        String token = header.substring(KeyPrefix.PREFIX_TOKEN.length()).trim();
-
+        String token = TokenHandler.extract(request);
         if (Boolean.FALSE.equals(jwtService.isValidToken(token))) {
-            return new ResponseServerDto("Sesión no válida o expirada.", HttpStatus.UNAUTHORIZED, false);
+            throw new RestExceptionHandler(ApiCodes.API_CODE_401, HttpStatus.UNAUTHORIZED, Messages.SESSION_ERROR);
         }
-
         JwtDto jwtDto = jwtService.decodeJwt(token);
         UserResponse user = userService.findByUsername(jwtDto.getBody().getSub());
-
         if (user == null) {
             return new ResponseServerDto("El usuario no fue encontrado.", HttpStatus.NOT_FOUND, false);
         }

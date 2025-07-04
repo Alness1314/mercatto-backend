@@ -1,4 +1,6 @@
-package com.mercatto.sales.app.dto;
+package com.mercatto.sales.app.jwt;
+
+import java.util.Map;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -13,7 +15,8 @@ import lombok.Setter;
 @Builder
 public class BodyDto {
     private String sub;
-    private String userKey;
-    private Long iat;
+    private String iss;
     private Long exp;
+    private Long iat;
+    private Map<String, Object> claims;
 }

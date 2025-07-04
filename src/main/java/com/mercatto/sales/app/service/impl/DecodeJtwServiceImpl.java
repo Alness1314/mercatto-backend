@@ -1,37 +1,59 @@
 package com.mercatto.sales.app.service.impl;
 
+import com.mercatto.sales.app.jwt.BodyDto;
+import com.mercatto.sales.app.jwt.HeaderDto;
+import com.mercatto.sales.app.jwt.JwtDto;
 import com.mercatto.sales.app.service.DecodeJwtService;
+import com.mercatto.sales.auth.configuration.JwtTokenConfig;
 
-import org.apache.commons.codec.binary.Base64;
-
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwsHeader;
+import io.jsonwebtoken.Jwt;
+import io.jsonwebtoken.Jwts;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
-import com.mercatto.sales.app.dto.BodyDto;
-import com.mercatto.sales.app.dto.HeaderDto;
-import com.mercatto.sales.app.dto.JwtDto;
-import com.google.gson.Gson;
+import java.security.Key;
 
 @Service
-public class DecodeJtwServiceImpl implements DecodeJwtService{
-     @Override
+@RequiredArgsConstructor
+public class DecodeJtwServiceImpl implements DecodeJwtService {
+    private final JwtTokenConfig jwtTokenConfig;
+
+    @SuppressWarnings("rawtypes")
+    @Override
     public JwtDto decodeJwt(String jwtToken) {
-        String[] parts = jwtToken.split("\\.");
-        if (parts.length != 3) {
-            throw new IllegalArgumentException("Invalid JWT format. It should have three parts separated by dots.");
-        }
+        Key key = jwtTokenConfig.getSecretKey();
 
-        Base64 base64Url = new Base64(true);
-        Gson gson = new Gson();
+        // Parseamos el token sin verificar firma (solo lectura)
+        Jwt<JwsHeader, Claims> jwt = Jwts.parserBuilder()
+                .setSigningKey(key)
+                .build()
+                .parseClaimsJws(jwtToken);
 
-        String headerJson = new String(base64Url.decode(parts[0]));
-       
-        String bodyJson = new String(base64Url.decode(parts[1]));
-       
+        // Extraemos header y body
+        JwsHeader<?> header = jwt.getHeader();
+        Claims claims = jwt.getBody();
 
-        HeaderDto headerDto = gson.fromJson(headerJson, HeaderDto.class);
-        BodyDto bodyDto = gson.fromJson(bodyJson, BodyDto.class);
+        // Mapear manualmente a HeaderDto y BodyDto si no usas reflexión
+        HeaderDto headerDto = HeaderDto.builder()
+                .alg((String) header.get("alg"))
+                .typ((String) header.get("typ"))
+                .build();
 
-        return new JwtDto(headerDto, bodyDto);
+        BodyDto bodyDto = BodyDto.builder()
+                .sub(claims.getSubject())
+                .iss(claims.getIssuer())
+                .exp(claims.getExpiration() != null ? claims.getExpiration().getTime() / 1000 : null)
+                .iat(claims.getIssuedAt() != null ? claims.getIssuedAt().getTime() / 1000 : null)
+                .claims(claims) // puedes almacenar todos los claims aquí si BodyDto tiene un Map<String,
+                                // Object>
+                .build();
+
+        return JwtDto.builder()
+                .header(headerDto)
+                .body(bodyDto)
+                .build();
     }
 
     @Override

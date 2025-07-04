@@ -19,6 +19,7 @@ import com.mercatto.sales.users.dto.response.UserResponse;
 import com.mercatto.sales.users.service.UserService;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("${api.prefix}/users")
@@ -28,7 +29,7 @@ public class UserAdminController {
     private UserService userService;
 
     @PostMapping("/admin")
-    public ResponseEntity<UserResponse> create(@RequestBody UserRequest request) {
+    public ResponseEntity<UserResponse> create(@Valid @RequestBody UserRequest request) {
         UserResponse response = userService.saveWithoutCompany(request);
         return new ResponseEntity<>(response, HttpStatus.OK);
     }

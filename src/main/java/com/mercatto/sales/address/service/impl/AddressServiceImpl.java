@@ -2,10 +2,7 @@ package com.mercatto.sales.address.service.impl;
 
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,8 +26,9 @@ import com.mercatto.sales.country.repository.CountryRepository;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.states.entity.StateEntity;
 import com.mercatto.sales.states.repository.StateRepository;
+import com.mercatto.sales.utils.ErrorLogger;
+import com.mercatto.sales.utils.UUIDHandler;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -51,16 +49,6 @@ public class AddressServiceImpl implements AddressService {
     @Autowired
     private GenericMapper mapper;
 
-    ModelMapper mapperUpdate = new ModelMapper();
-
-    @PostConstruct
-    private void init() {
-        mapperUpdate.getConfiguration()
-                .setSkipNullEnabled(true)
-                .setFieldMatchingEnabled(true)
-                .setMatchingStrategy(MatchingStrategies.STRICT);
-    }
-
     @Override
     public List<AddressResponse> find(Map<String, String> parameters) {
         return addressRepository.findAll(filterWithParameters(parameters))
@@ -71,7 +59,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponse findOne(String id) {
-        AddressEntity address = addressRepository.findById(UUID.fromString(id))
+        AddressEntity address = addressRepository.findById(UUIDHandler.toUUID(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, id)));
         return mapperDto(address);
@@ -79,15 +67,15 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public AddressResponse save(AddressRequest request) {
-        CountryEntity country = countryRepository.findById(UUID.fromString(request.getCountryId()))
+        CountryEntity country = countryRepository.findById(UUIDHandler.toUUID(request.getCountryId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getCountryId())));
 
-        StateEntity state = stateRepository.findById(UUID.fromString(request.getStateId()))
+        StateEntity state = stateRepository.findById(UUIDHandler.toUUID(request.getStateId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getStateId())));
 
-        CityEntity city = cityRepository.findById(UUID.fromString(request.getCityId()))
+        CityEntity city = cityRepository.findById(UUIDHandler.toUUID(request.getCityId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getCityId())));
         AddressEntity address = mapper.map(request, AddressEntity.class);
@@ -97,11 +85,11 @@ public class AddressServiceImpl implements AddressService {
             address.setCity(city);
             address = addressRepository.save(address);
         } catch (DataIntegrityViolationException ex) {
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
                     Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, e.getMessage(), e);
+            ErrorLogger.logError(e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
                     Messages.ERROR_ENTITY_SAVE);
         }
@@ -111,26 +99,26 @@ public class AddressServiceImpl implements AddressService {
     @Override
     public AddressResponse update(String id, AddressRequest request) {
         // Verificar que la dirección exista
-        AddressEntity existingAddress = addressRepository.findById(UUID.fromString(id))
+        AddressEntity existingAddress = addressRepository.findById(UUIDHandler.toUUID(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getCountryId())));
 
         // Validar y obtener las entidades relacionadas
-        CountryEntity country = countryRepository.findById(UUID.fromString(request.getCountryId()))
+        CountryEntity country = countryRepository.findById(UUIDHandler.toUUID(request.getCountryId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getCountryId())));
 
-        StateEntity state = stateRepository.findById(UUID.fromString(request.getStateId()))
+        StateEntity state = stateRepository.findById(UUIDHandler.toUUID(request.getStateId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getStateId())));
 
-        CityEntity city = cityRepository.findById(UUID.fromString(request.getCityId()))
+        CityEntity city = cityRepository.findById(UUIDHandler.toUUID(request.getCityId()))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, request.getCityId())));
 
         try {
             // Actualizar los campos de la entidad existente
-            mapperUpdate.map(request, existingAddress);
+            mapper.map(request, existingAddress);
 
             // Establecer las relaciones
             existingAddress.setCountry(country);
@@ -142,11 +130,11 @@ public class AddressServiceImpl implements AddressService {
 
             return mapperDto(updatedAddress);
         } catch (DataIntegrityViolationException ex) {
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
                     Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, e.getMessage(), e);
+            ErrorLogger.logError(e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_500, HttpStatus.INTERNAL_SERVER_ERROR,
                     Messages.ERROR_ENTITY_UPDATE);
         }
@@ -154,7 +142,7 @@ public class AddressServiceImpl implements AddressService {
 
     @Override
     public ResponseServerDto delete(String id) {
-        AddressEntity existingAddress = addressRepository.findById(UUID.fromString(id))
+        AddressEntity existingAddress = addressRepository.findById(UUIDHandler.toUUID(id))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, id)));
         try {
@@ -162,11 +150,11 @@ public class AddressServiceImpl implements AddressService {
             addressRepository.save(existingAddress);
             return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
         } catch (DataIntegrityViolationException ex) {
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
                     Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
+            ErrorLogger.logError(e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
                     String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }

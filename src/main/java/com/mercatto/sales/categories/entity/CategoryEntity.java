@@ -40,7 +40,7 @@ public class CategoryEntity {
     @Column(nullable = false, columnDefinition = "character varying(64)")
     private String name;
 
-    @Column(nullable = false, columnDefinition = "character varying(255)")
+    @Column(nullable = true, columnDefinition = "character varying(255)")
     private String description;
 
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, orphanRemoval = true)

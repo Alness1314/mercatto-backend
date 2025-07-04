@@ -20,7 +20,7 @@ public class JwtTokenConfig {
 
     @PostConstruct
     public void init() {
-        log.info("Secret key: {}", secret);
+        log.debug("Secret key: {}", secret);
         try {
             secretKey = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
         } catch (Exception e) {

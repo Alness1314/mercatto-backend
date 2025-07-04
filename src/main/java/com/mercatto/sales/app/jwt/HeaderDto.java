@@ -1,4 +1,4 @@
-package com.mercatto.sales.app.dto;
+package com.mercatto.sales.app.jwt;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -11,7 +11,7 @@ import lombok.Setter;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class JwtDto {
-    private HeaderDto header;
-    private BodyDto body;
+public class HeaderDto {
+    private String alg;
+    private String typ;
 }

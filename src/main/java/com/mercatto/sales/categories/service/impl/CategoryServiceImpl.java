@@ -3,10 +3,7 @@ package com.mercatto.sales.categories.service.impl;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
@@ -27,8 +24,8 @@ import com.mercatto.sales.company.entity.CompanyEntity;
 import com.mercatto.sales.company.repository.CompanyRepository;
 import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
+import com.mercatto.sales.utils.UUIDHandler;
 
-import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 
 @Service
@@ -42,16 +39,6 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Autowired
     private GenericMapper mapper;
-
-    ModelMapper mapperUpdate = new ModelMapper();
-
-    @PostConstruct
-    private void init() {
-        mapperUpdate.getConfiguration()
-                .setSkipNullEnabled(true)
-                .setFieldMatchingEnabled(true)
-                .setMatchingStrategy(MatchingStrategies.STRICT);
-    }
 
     @Override
     public List<CategoryResponse> find(String companyId, Map<String, String> params) {
@@ -75,7 +62,7 @@ public class CategoryServiceImpl implements CategoryService {
 
     @Override
     public CategoryResponse save(String companyId, CategoryRequest request) {
-        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+        CompanyEntity company = companyRepository.findById(UUIDHandler.toUUID(companyId))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, companyId)));
         CategoryEntity category = mapper.map(request, CategoryEntity.class);
@@ -97,7 +84,7 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     public CategoryResponse update(String companyId, String id, CategoryRequest request) {
         // Verificar que la compañía existe
-        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+        CompanyEntity company = companyRepository.findById(UUIDHandler.toUUID(companyId))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, companyId)));
 
@@ -109,7 +96,7 @@ public class CategoryServiceImpl implements CategoryService {
 
         try {
             // Actualizar los campos de la categoría con los nuevos valores
-            mapperUpdate.map(request, existingCategory);
+            mapper.map(request, existingCategory);
             existingCategory.setCompany(company); // Asegurar que mantiene la misma compañía
 
             // Guardar los cambios

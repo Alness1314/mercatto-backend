@@ -49,7 +49,7 @@ public class JwtAuthenticationFilter extends UsernamePasswordAuthenticationFilte
         AuthenticationDto user;
         try {
             user = new ObjectMapper().readValue(request.getInputStream(), AuthenticationDto.class);
-            log.info("User attempting login: {}", user);
+            log.debug("User attempting login: {}", user);
 
             if (user.getUsername() == null || user.getUsername().isEmpty() ||
                     user.getPassword() == null || user.getPassword().isEmpty()) {

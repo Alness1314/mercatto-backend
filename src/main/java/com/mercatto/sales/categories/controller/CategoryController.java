@@ -53,7 +53,7 @@ public class CategoryController {
 
     @PutMapping("/{companyId}/categories/{id}")
     public ResponseEntity<CategoryResponse> update(@PathVariable String companyId, @PathVariable String id,
-            @RequestBody CategoryRequest request) {
+            @Valid @RequestBody CategoryRequest request) {
         CategoryResponse response = categoryService.update(companyId, id, request);
         return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
     }

@@ -1,5 +1,6 @@
 package com.mercatto.sales.address.dto.request;
 
+import com.mercatto.sales.annotations.build.IsNumberString;
 import com.mercatto.sales.annotations.build.IsUUID;
 
 import jakarta.annotation.Nullable;
@@ -27,6 +28,7 @@ public class AddressRequest {
 
     @NotNull
     @Size(min = 1, max = 15)
+    @IsNumberString
     private String number;
 
     @NotNull
@@ -35,6 +37,7 @@ public class AddressRequest {
 
     @NotNull
     @Size(min = 1, max = 64)
+    @IsNumberString
     private String zipCode;
     
     @Nullable

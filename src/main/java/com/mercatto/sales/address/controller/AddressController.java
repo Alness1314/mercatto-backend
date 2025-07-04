@@ -50,7 +50,7 @@ public class AddressController {
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<AddressResponse> update(@PathVariable String id, @RequestBody AddressRequest request) {
+    public ResponseEntity<AddressResponse> update(@PathVariable String id,@Valid @RequestBody AddressRequest request) {
         AddressResponse response = addressService.update(id, request);
         return new ResponseEntity<>(response, HttpStatus.ACCEPTED);
     }

@@ -109,6 +109,19 @@ public class GenericMapper {
         }
     }
 
+    public <S, D> D map(S source, D destination) {
+    try {
+        mapper.map(source, destination);
+        return destination;
+    } catch (Exception e) {
+        e.printStackTrace();
+        throw new MappingException(
+            "Error al mapear de " + source.getClass().getSimpleName() +
+            " a " + destination.getClass().getSimpleName(), e
+        );
+    }
+}
+
     // Método para mapear una lista de objetos
     public <T, R> List<R> mapList(List<T> sourceList, Class<R> targetClass) {
         return sourceList.stream()

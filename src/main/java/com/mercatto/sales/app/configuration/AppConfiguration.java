@@ -16,10 +16,10 @@ public class AppConfiguration {
 
     @PostConstruct
     public void init() {
-        log.info("Response1: {}", appConfigService.createDefaultCountries());
-        log.info("Response2: {}", appConfigService.createDefaultStates());
-        log.info("Response3: {}", appConfigService.createDefaultCities());
-        log.info("Response4: {}", appConfigService.createDefaultProfiles());
-        log.info("Response5: {}", appConfigService.createDefaultUser());
+        log.info("Response countries: {}", appConfigService.createDefaultCountries());
+        log.info("Response states: {}", appConfigService.createDefaultStates());
+        log.info("Response cities: {}", appConfigService.createDefaultCities());
+        log.info("Response profiles: {}", appConfigService.createDefaultProfiles());
+        log.info("Response user: {}", appConfigService.createDefaultUser());
     }
 }

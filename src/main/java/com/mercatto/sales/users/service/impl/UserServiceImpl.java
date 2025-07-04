@@ -5,10 +5,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
-import org.modelmapper.ModelMapper;
-import org.modelmapper.convention.MatchingStrategies;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.domain.Specification;
@@ -29,8 +26,8 @@ import com.mercatto.sales.users.entity.UserEntity;
 import com.mercatto.sales.users.repository.UserRepository;
 import com.mercatto.sales.users.service.UserService;
 import com.mercatto.sales.users.specification.UserSpecification;
-
-import jakarta.annotation.PostConstruct;
+import com.mercatto.sales.utils.ErrorLogger;
+import com.mercatto.sales.utils.UUIDHandler;
 
 import com.mercatto.sales.profiles.repository.ProfileRepository;
 import com.mercatto.sales.profiles.entity.ProfileEntity;
@@ -67,19 +64,9 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Autowired
     GenericMapper mapper;
 
-    ModelMapper mapperUpdate = new ModelMapper();
-
-    @PostConstruct
-    private void init() {
-        mapperUpdate.getConfiguration()
-                .setSkipNullEnabled(true)
-                .setFieldMatchingEnabled(true)
-                .setMatchingStrategy(MatchingStrategies.STRICT);
-    }
-
     @Override
     public UserResponse save(String companyId, UserRequest request) {
-        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+        CompanyEntity company = companyRepository.findById(UUIDHandler.toUUID(companyId))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, companyId)));
         UserEntity newUser = mapper.map(request, UserEntity.class);
@@ -88,30 +75,30 @@ public class UserServiceImpl implements UserService, UserDetailsService {
                 throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND, Messages.NOT_FOUND_BASIC);
             }
             if (request.getImageId() != null) {
-                FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                FileEntity imageFile = fileRepository.findById(UUIDHandler.toUUID(request.getImageId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                                 Messages.NOT_FOUND_FILE));
                 newUser.setImage(imageFile);
             }
-            ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile())).orElse(null);
+            ProfileEntity profile = profileRepository.findById(UUIDHandler.toUUID(request.getProfile())).orElse(null);
             newUser.setProfile(profile);
             newUser.setPassword(passwordEncoder.encode(request.getPassword()));
             newUser.setCompany(company);
             newUser = userRepository.save(newUser);
             return mapperDto(newUser);
         } catch (DataIntegrityViolationException ex) {
+            ErrorLogger.logError(ex);
             if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
                 throw new RestExceptionHandler(ApiCodes.API_CODE_412,
                         HttpStatus.PRECONDITION_FAILED, Messages.USER_ALREADY_REGISTERED);
             }
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, Messages.DATA_INTEGRITY, ex);
         } catch (RestExceptionHandler ex) {
-            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw ex; // Re-lanzar excepciones ya gestionadas
         } catch (Exception ex) {
-            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, Messages.ERROR_ENTITY_SAVE, ex);
         }
@@ -124,25 +111,25 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             if (request.getProfile() == null) {
                 throw new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND, Messages.NOT_FOUND_BASIC);
             }
-            ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile())).orElse(null);
+            ProfileEntity profile = profileRepository.findById(UUIDHandler.toUUID(request.getProfile())).orElse(null);
             newUser.setProfile(profile);
             newUser.setPassword(passwordEncoder.encode(request.getPassword()));
             newUser.setCompany(null);
             newUser = userRepository.save(newUser);
             return mapperDto(newUser);
         } catch (DataIntegrityViolationException ex) {
+            ErrorLogger.logError(ex);
             if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
                 throw new RestExceptionHandler(ApiCodes.API_CODE_412,
                         HttpStatus.PRECONDITION_FAILED, Messages.USER_ALREADY_REGISTERED);
             }
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, Messages.DATA_INTEGRITY, ex);
         } catch (RestExceptionHandler ex) {
-            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw ex; // Re-lanzar excepciones ya gestionadas
         } catch (Exception ex) {
-            log.error(Messages.LOG_ERROR_TO_SAVE_ENTITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, Messages.ERROR_ENTITY_SAVE, ex);
         }
@@ -168,7 +155,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
     @Override
     public UserResponse update(String companyId, String id, UserRequest request) {
         // Find existing company and user
-        CompanyEntity company = companyRepository.findById(UUID.fromString(companyId))
+        CompanyEntity company = companyRepository.findById(UUIDHandler.toUUID(companyId))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, companyId)));
 
@@ -185,7 +172,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
             // Update image if provided
             if (request.getImageId() != null) {
-                FileEntity imageFile = fileRepository.findById(UUID.fromString(request.getImageId()))
+                FileEntity imageFile = fileRepository.findById(UUIDHandler.toUUID(request.getImageId()))
                         .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                                 Messages.NOT_FOUND_FILE));
                 existingUser.setImage(imageFile);
@@ -194,13 +181,13 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             }
 
             // Update profile
-            ProfileEntity profile = profileRepository.findById(UUID.fromString(request.getProfile()))
+            ProfileEntity profile = profileRepository.findById(UUIDHandler.toUUID(request.getProfile()))
                     .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                             Messages.NOT_FOUND_BASIC));
             existingUser.setProfile(profile);
 
             // Update other fields
-            mapperUpdate.map(request, existingUser);
+            mapper.map(request, existingUser);
             existingUser.setCompany(company); // Maintain company relationship
 
             // Update password if provided
@@ -211,18 +198,18 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             UserEntity updatedUser = userRepository.save(existingUser);
             return mapperDto(updatedUser);
         } catch (DataIntegrityViolationException ex) {
+            ErrorLogger.logError(ex);
             if (ex.getCause() instanceof org.hibernate.exception.ConstraintViolationException) {
                 throw new RestExceptionHandler(ApiCodes.API_CODE_412,
                         HttpStatus.PRECONDITION_FAILED, Messages.USER_ALREADY_REGISTERED);
             }
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
             throw new ResponseStatusException(
                     HttpStatus.CONFLICT, Messages.DATA_INTEGRITY, ex);
         } catch (RestExceptionHandler ex) {
-            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw ex; // Re-lanzar excepciones ya gestionadas
         } catch (Exception ex) {
-            log.error(Messages.LOG_ERROR_TO_UPDATE_ENTITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new ResponseStatusException(
                     HttpStatus.INTERNAL_SERVER_ERROR, Messages.ERROR_ENTITY_UPDATE, ex);
         }
@@ -230,7 +217,7 @@ public class UserServiceImpl implements UserService, UserDetailsService {
 
     @Override
     public ResponseServerDto delete(String companyId, String id) {
-        companyRepository.findById(UUID.fromString(companyId))
+        companyRepository.findById(UUIDHandler.toUUID(companyId))
                 .orElseThrow(() -> new RestExceptionHandler(ApiCodes.API_CODE_404, HttpStatus.NOT_FOUND,
                         String.format(Messages.NOT_FOUND, companyId)));
 
@@ -244,11 +231,11 @@ public class UserServiceImpl implements UserService, UserDetailsService {
             userRepository.save(existingUser);
             return new ResponseServerDto(String.format(Messages.ENTITY_DELETE, id), HttpStatus.ACCEPTED, true);
         } catch (DataIntegrityViolationException ex) {
-            log.error(Messages.LOG_ERROR_DATA_INTEGRITY, ex.getMessage(), ex);
+            ErrorLogger.logError(ex);
             throw new RestExceptionHandler(ApiCodes.API_CODE_400, HttpStatus.BAD_REQUEST,
                     Messages.DATA_INTEGRITY);
         } catch (Exception e) {
-            log.error(Messages.LOG_ERROR_TO_DELETE_ENTITY, e.getMessage(), e);
+            ErrorLogger.logError(e);
             throw new RestExceptionHandler(ApiCodes.API_CODE_409, HttpStatus.CONFLICT,
                     String.format(Messages.ERROR_ENTITY_DELETE, e.getMessage()));
         }
