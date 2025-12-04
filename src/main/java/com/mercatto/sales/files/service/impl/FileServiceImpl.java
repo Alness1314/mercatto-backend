@@ -12,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.UrlResource;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -30,12 +29,14 @@ import com.mercatto.sales.common.api.ApiCodes;
 import com.mercatto.sales.common.keys.Filters;
 import com.mercatto.sales.common.messages.Messages;
 import com.mercatto.sales.common.model.ResponseServerDto;
+import com.mercatto.sales.config.GenericMapper;
 import com.mercatto.sales.exceptions.RestExceptionHandler;
 import com.mercatto.sales.files.dto.FileResponse;
 import com.mercatto.sales.files.entity.FileEntity;
 import com.mercatto.sales.files.repository.FileRepository;
 import com.mercatto.sales.files.service.FileService;
 import com.mercatto.sales.files.specification.FileSpecification;
+import com.mercatto.sales.utils.UUIDHandler;
 
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -49,7 +50,8 @@ public class FileServiceImpl implements FileService {
     private final String baseDir = System.getProperty("user.dir") + File.separator + "assets" + File.separator;
     private final String uploadPath = baseDir + "uploads" + File.separator;
 
-    ModelMapper mapper = new ModelMapper();
+    @Autowired
+    private GenericMapper mapper;
 
     @PostConstruct
     public void init() {
@@ -79,7 +81,7 @@ public class FileServiceImpl implements FileService {
 
     @Override
     public FileResponse storeFile(MultipartFile file) {
-        UUID fileId = UUID.randomUUID();
+        UUID fileId = UUIDHandler.getUUUD();
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null) {
@@ -186,7 +188,7 @@ public class FileServiceImpl implements FileService {
     @Override
     public ResponseServerDto deleteFile(String id) {
         // Buscar la entidad del archivo en la base de datos
-        FileEntity fileEntity = fileRepository.findById(UUID.fromString(id))
+        FileEntity fileEntity = fileRepository.findById(UUIDHandler.toUUID(id))
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "File not found with id: " + id));
 
         try {

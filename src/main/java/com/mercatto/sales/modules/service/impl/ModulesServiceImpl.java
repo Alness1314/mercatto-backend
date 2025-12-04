@@ -27,6 +27,7 @@ import com.mercatto.sales.modules.specification.ModuleSpecification;
 import com.mercatto.sales.permissions.dto.response.PermissionDto;
 import com.mercatto.sales.permissions.entity.PermissionEntity;
 import com.mercatto.sales.profiles.dto.response.ProfileDto;
+import com.mercatto.sales.utils.UUIDHandler;
 
 import jakarta.persistence.EntityNotFoundException;
 import lombok.extern.slf4j.Slf4j;
@@ -43,7 +44,7 @@ public class ModulesServiceImpl implements ModulesService {
             return Collections.emptyList();
         }
 
-        UUID profileId = UUID.fromString(profileIdStr);
+        UUID profileId = UUIDHandler.toUUID(profileIdStr);
 
         // 1. Buscar el módulo padre por nombre
         Optional<ModulesEntity> parentOpt = modulesRepository.findOne(ModuleSpecification.filterByName(name));

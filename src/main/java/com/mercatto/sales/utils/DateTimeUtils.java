@@ -70,13 +70,11 @@ public class DateTimeUtils {
 
     public static LocalTime parseToLocalTime(String timeString) {
         try {
-            // Convertir la cadena a LocalTime
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern(PATTERN_TIME_ISO);
             return LocalTime.parse(timeString, formatter);
         } catch (DateTimeParseException e) {
-            // Manejo de error en caso de formato inválido
             log.error("El formato de tiempo proporcionado no es válido: {}", timeString);
-            return null; // Puedes lanzar una excepción personalizada si lo prefieres
+            return null; 
         }
     }
 
